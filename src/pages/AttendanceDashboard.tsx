@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useParams } from "react-router-dom";
 import { Calendar, Users, Info, CheckCircle2, Search, MapPin } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { StickyBottom } from "@/components/layout/StickyBottom";
@@ -26,6 +27,14 @@ import { toast } from "sonner";
 import { storage, Group, Student } from "@/lib/storage";
 
 export default function AttendanceDashboard() {
+  const { courtId } = useParams<{ courtId: string }>();
+
+  // Get current trainer from session
+  const currentTrainer = useMemo(() => {
+    const trainerData = sessionStorage.getItem("currentTrainer");
+    return trainerData ? JSON.parse(trainerData) : null;
+  }, []);
+
   const [groups, setGroups] = useState<Group[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
 
@@ -138,8 +147,11 @@ export default function AttendanceDashboard() {
 
       storage.saveAttendance({
         id: crypto.randomUUID(),
-        date: format(selectedDate, "yyyy-MM-dd"), // Always save for TODAY
+        date: format(selectedDate, "yyyy-MM-dd"),
+        courtId: courtId || "",
         groupId: selectedGroupId,
+        trainerId: currentTrainer?.id || "unknown",
+        trainerName: currentTrainer?.name || "Unknown",
         eventName: selectedGroupId === "others" ? eventName.trim() : undefined,
         presentStudentIds,
       });
@@ -160,7 +172,11 @@ export default function AttendanceDashboard() {
 
   return (
     <div className="min-h-screen bg-background pb-28">
-      <Header title="Attendance" showBack backTo="/" />
+      <Header
+        title={`Attendance - ${courtId?.replace('-', ' ').toUpperCase()}`}
+        showBack
+        backTo="/court-selection/attendance"
+      />
 
       <div className="container max-w-lg mx-auto px-4 py-6 animate-slide-up">
         {/* Control Section */}

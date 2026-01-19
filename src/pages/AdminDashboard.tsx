@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useParams } from "react-router-dom";
 import { Calendar, Users, UserPlus, UserMinus, ChevronRight } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { StatCard } from "@/components/ui/StatCard";
@@ -6,6 +7,9 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { StudentDetailModal } from "@/components/StudentDetailModal";
 import { AddStudentModal } from "@/components/AddStudentModal";
 import { RemoveStudentModal } from "@/components/RemoveStudentModal";
+import { DailyAttendanceReport } from "@/components/DailyAttendanceReport";
+import { TrainerManagement } from "@/components/TrainerManagement";
+import { TrainerAttendance } from "@/components/TrainerAttendance";
 import {
   Select,
   SelectContent,
@@ -18,7 +22,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format, isSameMonth, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { storage, Group, Student, AttendanceRecord } from "@/lib/storage";
+import { storage, Group, Student, AttendanceRecord, Trainer } from "@/lib/storage";
 
 // Extended student type for display
 interface StudentStats extends Student {
@@ -27,10 +31,16 @@ interface StudentStats extends Student {
   totalSessions: number;
 }
 
+type AdminTab = "trainers" | "trainer-attendance" | "students";
+
 export default function AdminDashboard() {
+  const { courtId } = useParams<{ courtId: string }>();
+  const [activeTab, setActiveTab] = useState<AdminTab>("students");
+
   const [groups, setGroups] = useState<Group[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [trainers, setTrainers] = useState<Trainer[]>([]);
 
   const [selectedGroupId, setSelectedGroupId] = useState<string>("all");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -45,6 +55,7 @@ export default function AdminDashboard() {
     setGroups(storage.getGroups());
     setStudents(storage.getStudents());
     setAttendanceRecords(storage.getAttendance());
+    setTrainers(storage.getTrainers());
   };
 
   useEffect(() => {
@@ -121,209 +132,310 @@ export default function AdminDashboard() {
     loadData();
   };
 
+  // Trainer Actions
+  const handleAddTrainer = (name: string, passcode: string) => {
+    const newTrainer = {
+      id: crypto.randomUUID().slice(0, 8),
+      name,
+      courtId: courtId || "",
+      passcode,
+    };
+    storage.saveTrainer(newTrainer);
+    toast.success(`Added trainer: ${name}`);
+    loadData();
+  };
+
+  const handleRemoveTrainer = (trainerId: string) => {
+    storage.deleteTrainer(trainerId);
+    toast.success("Trainer removed");
+    loadData();
+  };
+
+  const handleUpdatePasscode = (trainerId: string, newPasscode: string) => {
+    storage.updateTrainer(trainerId, { passcode: newPasscode });
+    toast.success("Passcode updated");
+    loadData();
+  };
+
   return (
     <div className="min-h-screen bg-background pb-8">
-      <Header title="Admin" showBack backTo="/" />
+      <Header
+        title={`Admin - ${courtId?.replace('-', ' ').toUpperCase()}`}
+        showBack
+        backTo="/admin"
+      />
 
       <div className="container max-w-2xl mx-auto px-4 py-6 animate-slide-up">
-        {/* Filter Section */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          {/* Group Selector */}
+        {/* Tab Navigation */}
+        <div className="flex gap-2 mb-6 p-1 bg-muted/30 rounded-xl border border-border/30">
+          <button
+            onClick={() => setActiveTab("students")}
+            className={cn(
+              "flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+              activeTab === "students"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Students
+          </button>
+          <button
+            onClick={() => setActiveTab("trainer-attendance")}
+            className={cn(
+              "flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+              activeTab === "trainer-attendance"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Attendance Log
+          </button>
+          <button
+            onClick={() => setActiveTab("trainers")}
+            className={cn(
+              "flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+              activeTab === "trainers"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Trainers
+          </button>
+        </div>
+
+        {/* Students Tab */}
+        {activeTab === "students" && (
           <div>
-            <label className="text-sm font-medium text-muted-foreground mb-2 block">
-              Group
-            </label>
-            <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
-              <SelectTrigger className="dropdown-trigger">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <SelectValue />
-                </div>
-              </SelectTrigger>
-              <SelectContent className="bg-card border-border">
-                <SelectItem value="all">All Groups</SelectItem>
-                {groups.map((group) => (
-                  <SelectItem key={group.id} value={group.id}>
-                    {group.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Month Picker */}
-          <div>
-            <label className="text-sm font-medium text-muted-foreground mb-2 block">
-              Month
-            </label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="dropdown-trigger w-full">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span>{format(selectedDate, "MMMM yyyy")}</span>
-                  </div>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 bg-card border-border" align="start">
-                <CalendarComponent
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(date) => date && setSelectedDate(date)}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
-
-        {/* Student Management Section */}
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-foreground mb-4">
-            Student Management
-          </h2>
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="flex items-center justify-center gap-2 py-4 px-6 rounded-xl bg-card border border-border/50 text-foreground font-medium transition-all hover:border-primary/30 hover:shadow-md active:scale-[0.98]"
-            >
-              <UserPlus className="h-5 w-5 text-primary" />
-              <span>Add Student</span>
-            </button>
-            <button
-              onClick={() => setIsRemoveModalOpen(true)}
-              className="flex items-center justify-center gap-2 py-4 px-6 rounded-xl bg-card border border-border/50 text-foreground font-medium transition-all hover:border-primary/30 hover:shadow-md active:scale-[0.98]"
-            >
-              <UserMinus className="h-5 w-5 text-muted-foreground" />
-              <span>Remove Student</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Overview Stats */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <StatCard
-            label="Total Students"
-            value={totalStudents}
-            icon={Users}
-          />
-          <StatCard
-            label="Avg. Attendance"
-            value={`${isNaN(avgAttendance) ? 0 : avgAttendance.toFixed(0)}%`}
-            trend={avgAttendance >= 80 ? "up" : avgAttendance >= 50 ? "neutral" : "down"}
-          />
-        </div>
-
-        {/* Attendance Overview Table */}
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-foreground mb-4">
-            Attendance Overview
-          </h2>
-
-          {studentStats.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">No students found.</p>
-          ) : (
-            <>
-              {/* Mobile: Card View */}
-              <div className="space-y-3 sm:hidden">
-                {studentStats.map((student, index) => {
-                  const percentage = student.totalSessions > 0 ? (student.sessionsAttended / student.totalSessions) * 100 : 0;
-                  return (
-                    <button
-                      key={student.id}
-                      onClick={() => setSelectedStudent(student)}
-                      className="w-full text-left p-4 rounded-xl bg-card border border-border/50 transition-all hover:border-primary/30 hover:shadow-md animate-slide-up"
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
-                            {student.name.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="font-medium text-foreground">{student.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {student.sessionsAttended} / {student.totalSessions} sessions
-                            </p>
-                          </div>
-                        </div>
-                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <ProgressBar value={percentage} showLabel={false} size="sm" />
-                    </button>
-                  );
-                })}
+            {/* Filter Section */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              {/* Group Selector */}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                  Group
+                </label>
+                <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
+                  <SelectTrigger className="dropdown-trigger">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <SelectValue />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    <SelectItem value="all">All Groups</SelectItem>
+                    {groups.map((group) => (
+                      <SelectItem key={group.id} value={group.id}>
+                        {group.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Desktop: Table View */}
-              <div className="hidden sm:block overflow-hidden rounded-xl border border-border/50 bg-card">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border/50 bg-muted/30">
-                      <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                        Student
-                      </th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">
-                        Attended
-                      </th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">
-                        Missed
-                      </th>
-                      <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">
-                        Rate
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              {/* Month Picker */}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                  Month
+                </label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="dropdown-trigger w-full">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span>{format(selectedDate, "MMMM yyyy")}</span>
+                      </div>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-card border-border" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={(date) => date && setSelectedDate(date)}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            {/* Student Management Section */}
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-foreground mb-4">
+                Student Management
+              </h2>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="flex items-center justify-center gap-2 py-4 px-6 rounded-xl bg-card border border-border/50 text-foreground font-medium transition-all hover:border-primary/30 hover:shadow-md active:scale-[0.98]"
+                >
+                  <UserPlus className="h-5 w-5 text-primary" />
+                  <span>Add Student</span>
+                </button>
+                <button
+                  onClick={() => setIsRemoveModalOpen(true)}
+                  className="flex items-center justify-center gap-2 py-4 px-6 rounded-xl bg-card border border-border/50 text-foreground font-medium transition-all hover:border-primary/30 hover:shadow-md active:scale-[0.98]"
+                >
+                  <UserMinus className="h-5 w-5 text-muted-foreground" />
+                  <span>Remove Student</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Overview Stats */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <StatCard
+                label="Total Students"
+                value={totalStudents}
+                icon={Users}
+              />
+              <StatCard
+                label="Avg. Attendance"
+                value={`${isNaN(avgAttendance) ? 0 : avgAttendance.toFixed(0)}%`}
+                trend={avgAttendance >= 80 ? "up" : avgAttendance >= 50 ? "neutral" : "down"}
+              />
+            </div>
+
+            {/* Daily Attendance Report */}
+            <DailyAttendanceReport
+              courtId={courtId || ""}
+              students={students}
+              attendanceRecords={attendanceRecords}
+              groups={groups}
+            />
+
+            {/* Attendance Overview Table */}
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-foreground mb-4">
+                Attendance Overview
+              </h2>
+
+              {studentStats.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No students found.</p>
+              ) : (
+                <>
+                  {/* Mobile: Card View */}
+                  <div className="space-y-3 sm:hidden">
                     {studentStats.map((student, index) => {
                       const percentage = student.totalSessions > 0 ? (student.sessionsAttended / student.totalSessions) * 100 : 0;
                       return (
-                        <tr
+                        <button
                           key={student.id}
                           onClick={() => setSelectedStudent(student)}
-                          className="border-b border-border/30 last:border-0 cursor-pointer transition-colors hover:bg-muted/30"
+                          className="w-full text-left p-4 rounded-xl bg-card border border-border/50 transition-all hover:border-primary/30 hover:shadow-md animate-slide-up"
+                          style={{ animationDelay: `${index * 50}ms` }}
                         >
-                          <td className="px-4 py-4">
+                          <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-3">
-                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-medium">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
                                 {student.name.charAt(0)}
                               </div>
-                              <span className="font-medium text-foreground">
-                                {student.name}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-4 text-center text-foreground">
-                            {student.sessionsAttended}
-                          </td>
-                          <td className="px-4 py-4 text-center text-foreground">
-                            {student.sessionsMissed}
-                          </td>
-                          <td className="px-4 py-4">
-                            <div className="flex items-center justify-end gap-3">
-                              <div className="w-20">
-                                <ProgressBar value={percentage} showLabel={false} size="sm" />
+                              <div>
+                                <p className="font-medium text-foreground">{student.name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {student.sessionsAttended} / {student.totalSessions} sessions
+                                </p>
                               </div>
-                              <span className={cn(
-                                "text-sm font-medium w-12 text-right",
-                                percentage >= 80 && "text-success",
-                                percentage < 80 && percentage >= 50 && "text-warning",
-                                percentage < 50 && "text-destructive"
-                              )}>
-                                {percentage.toFixed(0)}%
-                              </span>
                             </div>
-                          </td>
-                        </tr>
+                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                          <ProgressBar value={percentage} showLabel={false} size="sm" />
+                        </button>
                       );
                     })}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </div>
+                  </div>
+
+                  {/* Desktop: Table View */}
+                  <div className="hidden sm:block overflow-hidden rounded-xl border border-border/50 bg-card">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border/50 bg-muted/30">
+                          <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                            Student
+                          </th>
+                          <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">
+                            Attended
+                          </th>
+                          <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">
+                            Missed
+                          </th>
+                          <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">
+                            Rate
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {studentStats.map((student, index) => {
+                          const percentage = student.totalSessions > 0 ? (student.sessionsAttended / student.totalSessions) * 100 : 0;
+                          return (
+                            <tr
+                              key={student.id}
+                              onClick={() => setSelectedStudent(student)}
+                              className="border-b border-border/30 last:border-0 cursor-pointer transition-colors hover:bg-muted/30"
+                            >
+                              <td className="px-4 py-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-medium">
+                                    {student.name.charAt(0)}
+                                  </div>
+                                  <span className="font-medium text-foreground">
+                                    {student.name}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-4 text-center text-foreground">
+                                {student.sessionsAttended}
+                              </td>
+                              <td className="px-4 py-4 text-center text-foreground">
+                                {student.sessionsMissed}
+                              </td>
+                              <td className="px-4 py-4">
+                                <div className="flex items-center justify-end gap-3">
+                                  <div className="w-20">
+                                    <ProgressBar value={percentage} showLabel={false} size="sm" />
+                                  </div>
+                                  <span className={cn(
+                                    "text-sm font-medium w-12 text-right",
+                                    percentage >= 80 && "text-success",
+                                    percentage < 80 && percentage >= 50 && "text-warning",
+                                    percentage < 50 && "text-destructive"
+                                  )}>
+                                    {percentage.toFixed(0)}%
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Trainer Attendance Tab */}
+        {activeTab === "trainer-attendance" && (
+          <TrainerAttendance
+            courtId={courtId || ""}
+            attendanceRecords={attendanceRecords}
+            trainers={trainers}
+            groups={groups}
+          />
+        )}
+
+        {/* Trainers Tab */}
+        {activeTab === "trainers" && (
+          <TrainerManagement
+            trainers={trainers}
+            courtId={courtId || ""}
+            onAddTrainer={handleAddTrainer}
+            onRemoveTrainer={handleRemoveTrainer}
+            onUpdatePasscode={handleUpdatePasscode}
+          />
+        )}
+
       </div>
 
       {/* Detail Modal */}

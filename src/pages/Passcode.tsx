@@ -1,39 +1,54 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Lock } from "lucide-react";
+import { storage } from "@/lib/storage";
+import { toast } from "sonner";
 
 export default function Passcode() {
   const navigate = useNavigate();
-  const { type } = useParams<{ type: "attendance" | "admin" }>();
+  const { type: typeParam, courtId } = useParams<{ type: "attendance" | "admin"; courtId?: string }>();
   const [passcode, setPasscode] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Detect type from URL if param is undefined
+  const location = window.location.pathname;
+  const type = typeParam || (location.includes('/admin') ? 'admin' : 'attendance');
 
-    if (type === "attendance") {
-      if (passcode === "1234") {
-        navigate("/attendance");
+  const handleContinue = () => {
+    if (type === "attendance" && courtId) {
+      const trainer = storage.validateTrainer(courtId, passcode);
+
+      if (trainer) {
+        sessionStorage.setItem("currentTrainer", JSON.stringify(trainer));
+        toast.success(`Welcome, ${trainer.name}!`);
+        // Use window.location instead of navigate
+        window.location.href = `/attendance/${courtId}`;
       } else {
-        setError("Invalid passcode (Try: 1234)");
+        setError(`Invalid trainer passcode`);
+        toast.error("Invalid passcode");
       }
-    } else {
-      if (passcode === "0000") {
-        navigate("/admin");
+    } else if (type === "admin") {
+      if (passcode === storage.PASSCODES.ADMIN) {
+        toast.success("Admin access granted!");
+        window.location.href = "/admin";
       } else {
-        setError("Invalid passcode (Try: 0000)");
+        setError("Invalid admin passcode");
+        toast.error("Invalid admin passcode");
       }
     }
   };
 
   const title = type === "attendance" ? "Trainer Access" : "Admin Access";
+  const subtitle = type === "attendance" && courtId
+    ? `${courtId.replace('-', ' ').toUpperCase()}`
+    : "Universal Access";
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
       <div className="px-4 py-4">
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate(type === "attendance" ? "/court-selection/attendance" : "/")}
           className="flex h-10 w-10 items-center justify-center rounded-xl bg-card border border-border/50 transition-all hover:bg-muted"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
@@ -56,43 +71,58 @@ export default function Passcode() {
               {title}
             </h1>
             <p className="text-muted-foreground">
-              Enter your passcode to continue
+              {subtitle}
             </p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Input */}
+          <div className="space-y-6">
             <div>
+              <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                Enter Passcode
+              </label>
               <input
-                type="password"
-                placeholder="Enter passcode"
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
                 value={passcode}
                 onChange={(e) => {
-                  setPasscode(e.target.value);
+                  const value = e.target.value.replace(/\D/g, '');
+                  setPasscode(value);
                   setError("");
                 }}
-                className="input-field text-center text-2xl tracking-[0.5em] font-medium"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleContinue();
+                  }
+                }}
+                className="w-full px-4 py-4 text-center text-2xl tracking-[0.5em] rounded-xl bg-card border border-border/50 text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                placeholder="0000"
                 autoFocus
               />
               {error && (
-                <p className="mt-2 text-sm text-destructive text-center animate-fade-in">
+                <p className="text-sm text-destructive mt-2 animate-shake">
                   {error}
                 </p>
               )}
             </div>
 
             <button
-              type="submit"
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleContinue();
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                handleContinue();
+              }}
               className="w-full py-4 rounded-xl bg-primary text-primary-foreground font-medium transition-all hover:opacity-90 active:scale-[0.98]"
             >
               Continue
             </button>
-          </form>
-
-          {/* Help Text */}
-          <p className="text-center text-sm text-muted-foreground mt-8">
-            Contact administrator if you forgot your passcode
-          </p>
+          </div>
         </div>
       </div>
     </div>

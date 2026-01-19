@@ -11,18 +11,47 @@ export interface Group {
   name: string;
 }
 
+export interface Trainer {
+  id: string;
+  name: string;
+  courtId: string;
+  passcode: string;
+}
+
 export interface AttendanceRecord {
   id: string;
   date: string; // ISO date string YYYY-MM-DD
+  courtId: string;
   groupId: string;
+  trainerId: string; // Who marked this attendance
+  trainerName: string; // For easy display
   eventName?: string; // For "Others" category
   presentStudentIds: string[];
 }
 
-// Initial Data
+// Initial Data - 5 Courts
 const INITIAL_GROUPS: Group[] = [
   { id: "4-5", name: "4 to 5" },
   { id: "5-6", name: "5 to 6" },
+];
+
+// Sample trainers - 2 per court
+const INITIAL_TRAINERS: Trainer[] = [
+  // Court 1
+  { id: "t1", name: "Ganesh", courtId: "court-1", passcode: "1111" },
+  { id: "t2", name: "Karthik", courtId: "court-1", passcode: "1112" },
+  // Court 2
+  { id: "t3", name: "Priya", courtId: "court-2", passcode: "2221" },
+  { id: "t4", name: "Rahul", courtId: "court-2", passcode: "2222" },
+  // Court 3
+  { id: "t5", name: "Amit", courtId: "court-3", passcode: "3331" },
+  { id: "t6", name: "Sneha", courtId: "court-3", passcode: "3332" },
+  // Court 4
+  { id: "t7", name: "Vikram", courtId: "court-4", passcode: "4441" },
+  { id: "t8", name: "Anita", courtId: "court-4", passcode: "4442" },
+  // Court 5
+  { id: "t9", name: "Rohan", courtId: "court-5", passcode: "5551" },
+  { id: "t10", name: "Meera", courtId: "court-5", passcode: "5552" },
 ];
 
 const INITIAL_STUDENTS: Student[] = [
@@ -41,29 +70,22 @@ const STORAGE_KEYS = {
   STUDENTS: "attendance_hub_students",
   GROUPS: "attendance_hub_groups",
   ATTENDANCE: "attendance_hub_records",
+  TRAINERS: "attendance_hub_trainers",
+};
+
+// Passcodes
+export const PASSCODES = {
+  ADMIN: "0000",
 };
 
 // Storage Helpers
 export const storage = {
   getGroups: (): Group[] => {
-    // Return hardcoded initial groups if we want to enforce them, 
-    // or merge with local storage if we want them editable.
-    // For this request, we'll force the initial groups if none exist, 
-    // but if we want to ensure "4 to 5" and "5 to 6" are always there, 
-    // we might want to just return them or reset. 
-    // Given the user specifically requested these groups, let's prioritize them.
     const data = localStorage.getItem(STORAGE_KEYS.GROUPS);
     if (!data) return INITIAL_GROUPS;
 
-    // Optional: Check if the stored groups match our requirement. 
-    // For simplicity, let's just use what's stored if it exists, otherwise initial.
-    // However, since we are changing the requirement mid-stream, the user might have old data.
-    // Let's force a "migration" or just return INITIAL_GROUPS if we detect old structure/names?
-    // The safest is to rely on localStorage but if we are "developing", maybe we should reset.
-    // I will write a small check to inject the new defaults if they are missing.
     const groups = JSON.parse(data);
     if (groups.length !== 2 || groups[0].name !== "4 to 5") {
-      // logic to "reset" for this specific user request context
       localStorage.setItem(STORAGE_KEYS.GROUPS, JSON.stringify(INITIAL_GROUPS));
       return INITIAL_GROUPS;
     }
@@ -72,13 +94,17 @@ export const storage = {
 
   getStudents: (): Student[] => {
     const data = localStorage.getItem(STORAGE_KEYS.STUDENTS);
-    // similar reset logic if needed, but for now let's respect storage
     return data ? JSON.parse(data) : INITIAL_STUDENTS;
   },
 
   getAttendance: (): AttendanceRecord[] => {
     const data = localStorage.getItem(STORAGE_KEYS.ATTENDANCE);
     return data ? JSON.parse(data) : [];
+  },
+
+  getTrainers: (): Trainer[] => {
+    const data = localStorage.getItem(STORAGE_KEYS.TRAINERS);
+    return data ? JSON.parse(data) : INITIAL_TRAINERS;
   },
 
   saveStudent: (student: Student) => {
@@ -97,17 +123,41 @@ export const storage = {
 
   saveAttendance: (record: AttendanceRecord) => {
     const records = storage.getAttendance();
-    // Remove existing record for same date and group if exists (update)
     const filteredRecords = records.filter(
-      (r) => !(r.date === record.date && r.groupId === record.groupId)
+      (r) => !(r.date === record.date && r.groupId === record.groupId && r.courtId === record.courtId)
     );
     const newRecords = [...filteredRecords, record];
     localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(newRecords));
     return newRecords;
   },
-};
 
-export const PASSCODES = {
-  ATTENDANCE: "1234",
-  ADMIN: "0000",
+  saveTrainer: (trainer: Trainer) => {
+    const trainers = storage.getTrainers();
+    const newTrainers = [...trainers, trainer];
+    localStorage.setItem(STORAGE_KEYS.TRAINERS, JSON.stringify(newTrainers));
+    return newTrainers;
+  },
+
+  updateTrainer: (trainerId: string, updates: Partial<Trainer>) => {
+    const trainers = storage.getTrainers();
+    const newTrainers = trainers.map(t =>
+      t.id === trainerId ? { ...t, ...updates } : t
+    );
+    localStorage.setItem(STORAGE_KEYS.TRAINERS, JSON.stringify(newTrainers));
+    return newTrainers;
+  },
+
+  deleteTrainer: (trainerId: string) => {
+    const trainers = storage.getTrainers();
+    const newTrainers = trainers.filter((t) => t.id !== trainerId);
+    localStorage.setItem(STORAGE_KEYS.TRAINERS, JSON.stringify(newTrainers));
+    return newTrainers;
+  },
+
+  validateTrainer: (courtId: string, passcode: string): Trainer | null => {
+    const trainers = storage.getTrainers();
+    return trainers.find(t => t.courtId === courtId && t.passcode === passcode) || null;
+  },
+
+  PASSCODES: PASSCODES,
 };

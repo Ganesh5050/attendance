@@ -28,7 +28,7 @@ export default function Landing() {
             description="Mark attendance for your group"
             icon={ClipboardCheck}
             variant="primary"
-            onClick={() => navigate("/passcode/attendance")}
+            onClick={() => navigate("/court-selection/attendance")}
           />
 
           <ActionCard
