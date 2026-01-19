@@ -22,7 +22,7 @@ export default function Passcode() {
         sessionStorage.setItem("currentTrainer", JSON.stringify(trainer));
         toast.success(`Welcome, ${trainer.name}!`);
         // Use window.location instead of navigate
-        window.location.href = `/attendance/${courtId}`;
+        navigate(`/attendance/${courtId}`);
       } else {
         setError(`Invalid trainer passcode`);
         toast.error("Invalid passcode");
@@ -30,7 +30,7 @@ export default function Passcode() {
     } else if (type === "admin") {
       if (passcode === storage.PASSCODES.ADMIN) {
         toast.success("Admin access granted!");
-        window.location.href = "/admin";
+        navigate("/admin");
       } else {
         setError("Invalid admin passcode");
         toast.error("Invalid admin passcode");
