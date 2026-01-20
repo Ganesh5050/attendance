@@ -3,6 +3,8 @@
 ## Admin Access
 **Admin Passcode:** 0000
 
+**Note:** Admin (SHREE PATIL) can also mark attendance using passcode `0000` when trainers are absent. This is a universal coach access for all 5 centers.
+
 ---
 
 ## Coach Passcodes by Center

@@ -37,6 +37,13 @@ const INITIAL_GROUPS: Group[] = [
 
 // Sample trainers - Real coaches with unique passcodes
 const INITIAL_TRAINERS: Trainer[] = [
+  // Admin (Universal Coach - can mark attendance at any center when trainers are absent)
+  { id: "admin-t1", name: "SHREE PATIL", courtId: "court-1", passcode: "0000" },
+  { id: "admin-t2", name: "SHREE PATIL", courtId: "court-2", passcode: "0000" },
+  { id: "admin-t3", name: "SHREE PATIL", courtId: "court-3", passcode: "0000" },
+  { id: "admin-t4", name: "SHREE PATIL", courtId: "court-4", passcode: "0000" },
+  { id: "admin-t5", name: "SHREE PATIL", courtId: "court-5", passcode: "0000" },
+
   // GKP Club (2 coaches)
   { id: "t1", name: "Rishikesh Shukla", courtId: "court-1", passcode: "7241" },
   { id: "t2", name: "Ravi Kanu", courtId: "court-1", passcode: "8356" },
@@ -63,7 +70,7 @@ const INITIAL_STUDENTS: Student[] = [
   { id: "s2", name: "Bob Wilson", groupId: "4-5" },
   { id: "s3", name: "Charlie Brown", groupId: "5-6" },
   { id: "s4", name: "David Lee", groupId: "5-6" },
-  { id: "s5", name: "Emily Davis", groupId: "4-5" },
+  { id: "s5", name: "Emma Davis", groupId: "4-5" },
   { id: "s6", name: "Frank Miller", groupId: "5-6" },
   { id: "s7", name: "Grace Taylor", groupId: "4-5" },
   { id: "s8", name: "Henry White", groupId: "5-6" },
@@ -96,86 +103,101 @@ export const PASSCODES = {
   ADMIN: "0000",
 };
 
-// Storage Helpers
+// Initialize storage with default data if empty
+const initializeStorage = () => {
+  if (!localStorage.getItem(STORAGE_KEYS.STUDENTS)) {
+    localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(INITIAL_STUDENTS));
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.GROUPS)) {
+    localStorage.setItem(STORAGE_KEYS.GROUPS, JSON.stringify(INITIAL_GROUPS));
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.ATTENDANCE)) {
+    localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify([]));
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.TRAINERS)) {
+    localStorage.setItem(STORAGE_KEYS.TRAINERS, JSON.stringify(INITIAL_TRAINERS));
+  }
+};
+
+// Initialize on module load
+initializeStorage();
+
+// Storage API
 export const storage = {
-  getGroups: (): Group[] => {
-    const data = localStorage.getItem(STORAGE_KEYS.GROUPS);
-    if (!data) return INITIAL_GROUPS;
-
-    const groups = JSON.parse(data);
-    if (groups.length !== 2 || groups[0].name !== "4 to 5") {
-      localStorage.setItem(STORAGE_KEYS.GROUPS, JSON.stringify(INITIAL_GROUPS));
-      return INITIAL_GROUPS;
-    }
-    return groups;
-  },
-
+  // Students
   getStudents: (): Student[] => {
     const data = localStorage.getItem(STORAGE_KEYS.STUDENTS);
-    return data ? JSON.parse(data) : INITIAL_STUDENTS;
-  },
-
-  getAttendance: (): AttendanceRecord[] => {
-    const data = localStorage.getItem(STORAGE_KEYS.ATTENDANCE);
     return data ? JSON.parse(data) : [];
-  },
-
-  getTrainers: (): Trainer[] => {
-    const data = localStorage.getItem(STORAGE_KEYS.TRAINERS);
-    return data ? JSON.parse(data) : INITIAL_TRAINERS;
   },
 
   saveStudent: (student: Student) => {
     const students = storage.getStudents();
-    const newStudents = [...students, student];
-    localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(newStudents));
-    return newStudents;
+    students.push(student);
+    localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(students));
   },
 
-  deleteStudent: (studentId: string) => {
+  updateStudent: (id: string, updates: Partial<Student>) => {
     const students = storage.getStudents();
-    const newStudents = students.filter((s) => s.id !== studentId);
-    localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(newStudents));
-    return newStudents;
+    const index = students.findIndex((s) => s.id === id);
+    if (index !== -1) {
+      students[index] = { ...students[index], ...updates };
+      localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(students));
+    }
   },
 
-  saveAttendance: (record: AttendanceRecord) => {
-    const records = storage.getAttendance();
-    const filteredRecords = records.filter(
-      (r) => !(r.date === record.date && r.groupId === record.groupId && r.courtId === record.courtId)
-    );
-    const newRecords = [...filteredRecords, record];
-    localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(newRecords));
-    return newRecords;
+  deleteStudent: (id: string) => {
+    const students = storage.getStudents().filter((s) => s.id !== id);
+    localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(students));
+  },
+
+  // Groups
+  getGroups: (): Group[] => {
+    const data = localStorage.getItem(STORAGE_KEYS.GROUPS);
+    return data ? JSON.parse(data) : [];
+  },
+
+  // Attendance
+  getAttendanceRecords: (): AttendanceRecord[] => {
+    const data = localStorage.getItem(STORAGE_KEYS.ATTENDANCE);
+    return data ? JSON.parse(data) : [];
+  },
+
+  saveAttendanceRecord: (record: AttendanceRecord) => {
+    const records = storage.getAttendanceRecords();
+    records.push(record);
+    localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(records));
+  },
+
+  // Trainers
+  getTrainers: (): Trainer[] => {
+    const data = localStorage.getItem(STORAGE_KEYS.TRAINERS);
+    return data ? JSON.parse(data) : [];
   },
 
   saveTrainer: (trainer: Trainer) => {
     const trainers = storage.getTrainers();
-    const newTrainers = [...trainers, trainer];
-    localStorage.setItem(STORAGE_KEYS.TRAINERS, JSON.stringify(newTrainers));
-    return newTrainers;
+    trainers.push(trainer);
+    localStorage.setItem(STORAGE_KEYS.TRAINERS, JSON.stringify(trainers));
   },
 
-  updateTrainer: (trainerId: string, updates: Partial<Trainer>) => {
+  updateTrainer: (id: string, updates: Partial<Trainer>) => {
     const trainers = storage.getTrainers();
-    const newTrainers = trainers.map(t =>
-      t.id === trainerId ? { ...t, ...updates } : t
-    );
-    localStorage.setItem(STORAGE_KEYS.TRAINERS, JSON.stringify(newTrainers));
-    return newTrainers;
+    const index = trainers.findIndex((t) => t.id === id);
+    if (index !== -1) {
+      trainers[index] = { ...trainers[index], ...updates };
+      localStorage.setItem(STORAGE_KEYS.TRAINERS, JSON.stringify(trainers));
+    }
   },
 
-  deleteTrainer: (trainerId: string) => {
-    const trainers = storage.getTrainers();
-    const newTrainers = trainers.filter((t) => t.id !== trainerId);
-    localStorage.setItem(STORAGE_KEYS.TRAINERS, JSON.stringify(newTrainers));
-    return newTrainers;
+  deleteTrainer: (id: string) => {
+    const trainers = storage.getTrainers().filter((t) => t.id !== id);
+    localStorage.setItem(STORAGE_KEYS.TRAINERS, JSON.stringify(trainers));
   },
 
   validateTrainer: (courtId: string, passcode: string): Trainer | null => {
     const trainers = storage.getTrainers();
-    return trainers.find(t => t.courtId === courtId && t.passcode === passcode) || null;
+    return trainers.find((t) => t.courtId === courtId && t.passcode === passcode) || null;
   },
 
-  PASSCODES: PASSCODES,
+  PASSCODES,
 };
