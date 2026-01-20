@@ -157,13 +157,13 @@ export const storage = {
   },
 
   // Attendance
-  getAttendanceRecords: (): AttendanceRecord[] => {
+  getAttendance: (): AttendanceRecord[] => {
     const data = localStorage.getItem(STORAGE_KEYS.ATTENDANCE);
     return data ? JSON.parse(data) : [];
   },
 
-  saveAttendanceRecord: (record: AttendanceRecord) => {
-    const records = storage.getAttendanceRecords();
+  saveAttendance: (record: AttendanceRecord) => {
+    const records = storage.getAttendance();
     records.push(record);
     localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(records));
   },
