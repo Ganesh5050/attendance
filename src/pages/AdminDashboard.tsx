@@ -22,7 +22,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format, isSameMonth, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { storage, Group, Student, AttendanceRecord, Trainer } from "@/lib/storage";
+import { storage, Group, Student, AttendanceRecord, Trainer, getCourtName } from "@/lib/storage";
 
 // Extended student type for display
 interface StudentStats extends Student {
@@ -160,7 +160,7 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-background pb-8">
       <Header
-        title={`Admin - ${courtId?.replace('-', ' ').toUpperCase()}`}
+        title={`Admin - ${getCourtName(courtId || "")}`}
         showBack
         backTo="/admin"
       />

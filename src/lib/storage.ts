@@ -69,6 +69,20 @@ const INITIAL_STUDENTS: Student[] = [
   { id: "s8", name: "Henry White", groupId: "5-6" },
 ];
 
+// Court Names Mapping
+export const COURT_NAMES: Record<string, string> = {
+  "court-1": "GKP Club",
+  "court-2": "Kalptaru Aura",
+  "court-3": "The Orchards",
+  "court-4": "The Address (Wadhwa)",
+  "court-5": "Aaradhya One MICL",
+};
+
+// Helper function to get court name
+export const getCourtName = (courtId: string): string => {
+  return COURT_NAMES[courtId] || courtId;
+};
+
 // Storage Keys
 const STORAGE_KEYS = {
   STUDENTS: "attendance_hub_students",

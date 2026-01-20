@@ -24,7 +24,7 @@ import {
 import { format, isMonday, isWednesday, isFriday } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { storage, Group, Student } from "@/lib/storage";
+import { storage, Group, Student, getCourtName } from "@/lib/storage";
 
 export default function AttendanceDashboard() {
   const { courtId } = useParams<{ courtId: string }>();
@@ -173,7 +173,7 @@ export default function AttendanceDashboard() {
   return (
     <div className="min-h-screen bg-background pb-28">
       <Header
-        title={`Attendance - ${courtId?.replace('-', ' ').toUpperCase()}`}
+        title={`Attendance - ${getCourtName(courtId || "")}`}
         showBack
         backTo="/court-selection/attendance"
       />

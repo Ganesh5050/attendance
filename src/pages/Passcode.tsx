@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Lock } from "lucide-react";
-import { storage } from "@/lib/storage";
+import { storage, getCourtName } from "@/lib/storage";
 import { toast } from "sonner";
 
 export default function Passcode() {
@@ -40,7 +40,7 @@ export default function Passcode() {
 
   const title = type === "attendance" ? "Trainer Access" : "Admin Access";
   const subtitle = type === "attendance" && courtId
-    ? `${courtId.replace('-', ' ').toUpperCase()}`
+    ? getCourtName(courtId)
     : "Universal Access";
 
   return (
