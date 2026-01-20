@@ -114,9 +114,10 @@ const initializeStorage = () => {
   if (!localStorage.getItem(STORAGE_KEYS.ATTENDANCE)) {
     localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify([]));
   }
-  if (!localStorage.getItem(STORAGE_KEYS.TRAINERS)) {
-    localStorage.setItem(STORAGE_KEYS.TRAINERS, JSON.stringify(INITIAL_TRAINERS));
-  }
+
+  // Force update trainers to ensure new passcodes and SHREE PATIL are present
+  // This overwrites old trainer data with the new correct list
+  localStorage.setItem(STORAGE_KEYS.TRAINERS, JSON.stringify(INITIAL_TRAINERS));
 };
 
 // Initialize on module load
