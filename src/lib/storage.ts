@@ -35,23 +35,27 @@ const INITIAL_GROUPS: Group[] = [
   { id: "5-6", name: "5 to 6" },
 ];
 
-// Sample trainers - 2 per court
+// Sample trainers - Real coaches with unique passcodes
 const INITIAL_TRAINERS: Trainer[] = [
-  // Court 1
-  { id: "t1", name: "Ganesh", courtId: "court-1", passcode: "1111" },
-  { id: "t2", name: "Karthik", courtId: "court-1", passcode: "1112" },
-  // Court 2
-  { id: "t3", name: "Priya", courtId: "court-2", passcode: "2221" },
-  { id: "t4", name: "Rahul", courtId: "court-2", passcode: "2222" },
-  // Court 3
-  { id: "t5", name: "Amit", courtId: "court-3", passcode: "3331" },
-  { id: "t6", name: "Sneha", courtId: "court-3", passcode: "3332" },
-  // Court 4
-  { id: "t7", name: "Vikram", courtId: "court-4", passcode: "4441" },
-  { id: "t8", name: "Anita", courtId: "court-4", passcode: "4442" },
-  // Court 5
-  { id: "t9", name: "Rohan", courtId: "court-5", passcode: "5551" },
-  { id: "t10", name: "Meera", courtId: "court-5", passcode: "5552" },
+  // GKP Club (2 coaches)
+  { id: "t1", name: "Rishikesh Shukla", courtId: "court-1", passcode: "7241" },
+  { id: "t2", name: "Ravi Kanu", courtId: "court-1", passcode: "8356" },
+
+  // Kalptaru Aura (2 coaches)
+  { id: "t3", name: "Vinit Vaidya", courtId: "court-2", passcode: "5892" },
+  { id: "t4", name: "Abhishek Gupta", courtId: "court-2", passcode: "4673" },
+
+  // The Orchards (2 coaches - Rishikesh Shukla has access to both GKP Club and The Orchards)
+  { id: "t5", name: "Veknis Swami", courtId: "court-3", passcode: "9184" },
+  { id: "t6", name: "Rishikesh Shukla", courtId: "court-3", passcode: "7241" }, // Same passcode as court-1
+
+  // The Address (3 coaches)
+  { id: "t7", name: "Praful Kamble", courtId: "court-4", passcode: "3527" },
+  { id: "t8", name: "Saurabh Gosai", courtId: "court-4", passcode: "6849" },
+  { id: "t9", name: "Saurabh Gupta", courtId: "court-4", passcode: "2915" },
+
+  // Aaradhya One MICL (1 coach)
+  { id: "t10", name: "Rahul Verma", courtId: "court-5", passcode: "5738" },
 ];
 
 const INITIAL_STUDENTS: Student[] = [
