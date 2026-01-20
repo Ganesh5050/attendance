@@ -114,8 +114,20 @@ const initializeStorage = () => {
   if (!localStorage.getItem(STORAGE_KEYS.ATTENDANCE)) {
     localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify([]));
   }
-  if (!localStorage.getItem(STORAGE_KEYS.TRAINERS)) {
+
+  // Always ensure trainers include SHREE PATIL (admin)
+  const existingTrainers = localStorage.getItem(STORAGE_KEYS.TRAINERS);
+  if (!existingTrainers) {
     localStorage.setItem(STORAGE_KEYS.TRAINERS, JSON.stringify(INITIAL_TRAINERS));
+  } else {
+    const trainers = JSON.parse(existingTrainers);
+    const hasAdmin = trainers.some((t: Trainer) => t.name === "SHREE PATIL");
+    if (!hasAdmin) {
+      // Add SHREE PATIL to all courts
+      const adminTrainers = INITIAL_TRAINERS.filter(t => t.name === "SHREE PATIL");
+      const updatedTrainers = [...trainers, ...adminTrainers];
+      localStorage.setItem(STORAGE_KEYS.TRAINERS, JSON.stringify(updatedTrainers));
+    }
   }
 };
 
