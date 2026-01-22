@@ -9,7 +9,7 @@ import Passcode from "./pages/Passcode";
 import AttendanceDashboard from "./pages/AttendanceDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
-import "./lib/migrate"; // Import migration script
+
 
 const queryClient = new QueryClient();
 
