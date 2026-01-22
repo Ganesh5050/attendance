@@ -100,7 +100,9 @@ export default function AdminDashboard() {
       const groupSessions = monthRecords.filter(r => r.groupId === student.groupId);
 
       const attendedCount = groupSessions.filter(r =>
-        r.presentStudentIds.includes(student.id)
+        Array.isArray(r.presentStudentIds) && r.presentStudentIds.some(pid =>
+          pid.trim().toLowerCase() === student.id.trim().toLowerCase()
+        )
       ).length;
 
       const totalSessions = groupSessions.length;
