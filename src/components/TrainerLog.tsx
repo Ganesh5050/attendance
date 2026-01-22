@@ -13,7 +13,11 @@ interface TrainerLogEntry {
     date: string;
 }
 
-export function TrainerLog() {
+interface TrainerLogProps {
+    courtId: string;
+}
+
+export function TrainerLog({ courtId }: TrainerLogProps) {
     const [entries, setEntries] = useState<TrainerLogEntry[]>([]);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -24,22 +28,19 @@ export function TrainerLog() {
             try {
                 // Fetch Data
                 const allRecords = await storage.getAttendance();
+                // Filter by Court ID
+                const courtRecords = allRecords.filter(r => r.courtId === courtId);
+
                 const allStudents = await storage.getStudents();
 
-                // Group Configs to look up batch names if needed
-                const allGroups = storage.getGroups(); // Sync, but need courtId?
-                // Actually storage.getGroups requires courtId. 
-                // We can infer batch name from courtId + groupId mapping or just use groupId if not found.
-                // Better approach: Iterate all courts to build a group map
+                // Group Configs (Optimization: Get ONLY for this court)
                 const groupMap: Record<string, string> = {};
-                ["court-1", "court-2", "court-3", "court-4", "court-5"].forEach(court => {
-                    const groups = storage.getGroups(court);
-                    groups.forEach(g => {
-                        groupMap[g.id] = g.name;
-                    });
+                const groups = storage.getGroups(courtId);
+                groups.forEach(g => {
+                    groupMap[g.id] = g.name;
                 });
 
-                const loadedEntries: TrainerLogEntry[] = allRecords.map(record => {
+                const loadedEntries: TrainerLogEntry[] = courtRecords.map(record => {
                     // Get Names of Present Students
                     const presentNames = allStudents
                         .filter(s => record.presentStudentIds.includes(s.id))

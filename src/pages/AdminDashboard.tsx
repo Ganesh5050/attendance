@@ -472,7 +472,7 @@ export default function AdminDashboard() {
 
         {/* Trainer Log Tab */}
         {activeTab === "trainer-log" && (
-          <TrainerLog />
+          <TrainerLog courtId={courtId || ""} />
         )}
 
         {/* Trainers Tab */}
