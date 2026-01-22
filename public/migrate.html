@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appwrite Migration - Attendance Hub</title>
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@14.0.1"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #1a1a1a;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .info-box p {
+            margin: 8px 0;
+            color: #333;
+        }
+
+        .info-box strong {
+            color: #667eea;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #log {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 500px;
+            overflow-y: auto;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            line-height: 1.6;
+            display: none;
+        }
+
+        #log.visible {
+            display: block;
+        }
+
+        .success {
+            color: #4EC9B0;
+        }
+
+        .error {
+            color: #F48771;
+        }
+
+        .info {
+            color: #9CDCFE;
+        }
+
+        .warning {
+            color: #DCDCAA;
+        }
+
+        .progress {
+            background: #e9ecef;
+            height: 8px;
+            border-radius: 4px;
+            margin-top: 20px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress.visible {
+            display: block;
+        }
+
+        .progress-bar {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .stats.visible {
+            display: grid;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🚀 Appwrite Migration Tool</h1>
+        <p class="subtitle">Migrate all students and trainers to Appwrite Cloud Database</p>
+
+        <div class="info-box">
+            <p><strong>Project ID:</strong> 69722da400266760f1d7</p>
+            <p><strong>Database ID:</strong> 69722e890013ea3ea3ba</p>
+            <p><strong>Total Students:</strong> 159</p>
+            <p><strong>Total Trainers:</strong> 10</p>
+        </div>
+
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="successCount">0</div>
+                <div class="stat-label">Success</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="failCount">0</div>
+                <div class="stat-label">Failed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalCount">0</div>
+                <div class="stat-label">Total</div>
+            </div>
+        </div>
+
+        <div class="progress" id="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <button id="migrateBtn" onclick="startMigration()">Start Migration</button>
+
+        <div id="log"></div>
+    </div>
+
+    <script>
+        const { Client, Databases, ID } = Appwrite;
+
+        // Initialize Appwrite
+        const client = new Client()
+            .setEndpoint('https://sgp.cloud.appwrite.io/v1')
+            .setProject('69722da400266760f1d7');
+
+        const databases = new Databases(client);
+        const DATABASE_ID = '69722e890013ea3ea3ba';
+
+        const log = document.getElementById('log');
+        const btn = document.getElementById('migrateBtn');
+        const stats = document.getElementById('stats');
+        const progress = document.getElementById('progress');
+        const progressBar = document.getElementById('progressBar');
+
+        let successCount = 0;
+        let failCount = 0;
+
+        function addLog(message, type = 'info') {
+            log.classList.add('visible');
+            const span = document.createElement('span');
+            span.className = type;
+            const timestamp = new Date().toLocaleTimeString();
+            span.textContent = `[${timestamp}] ${message}\n`;
+            log.appendChild(span);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function updateStats(success, fail, total) {
+            stats.classList.add('visible');
+            document.getElementById('successCount').textContent = success;
+            document.getElementById('failCount').textContent = fail;
+            document.getElementById('totalCount').textContent = total;
+        }
+
+        function updateProgress(current, total) {
+            progress.classList.add('visible');
+            const percentage = (current / total) * 100;
+            progressBar.style.width = percentage + '%';
+        }
+
+        async function startMigration() {
+            btn.disabled = true;
+            btn.textContent = 'Migration in Progress...';
+            log.innerHTML = '';
+            successCount = 0;
+            failCount = 0;
+
+            addLog('🚀 Starting migration to Appwrite...', 'info');
+            addLog('Testing connection...', 'info');
+
+            try {
+                await databases.listDocuments(DATABASE_ID, 'students', []);
+                addLog('✅ Connection successful!', 'success');
+            } catch (error) {
+                addLog('❌ Connection failed: ' + error.message, 'error');
+                addLog('💡 Make sure you added this domain to Appwrite platforms!', 'warning');
+                btn.disabled = false;
+                btn.textContent = 'Start Migration';
+                return;
+            }
+
+            addLog('\n📚 Migrating students...', 'info');
+
+            // Sample students for testing - replace with full list
+            const students = [
+                { id: "gkp-1", name: "AANIT JILLA", groupId: "gkp-all" },
+                { id: "gkp-2", name: "AARUSH THAKKAR", groupId: "gkp-all" },
+                { id: "gkp-3", name: "AARYA MOTA", groupId: "gkp-all" }
+            ];
+
+            const total = students.length;
+
+            for (let i = 0; i < students.length; i++) {
+                const student = students[i];
+                try {
+                    await databases.createDocument(
+                        DATABASE_ID,
+                        'students',
+                        ID.unique(),
+                        student
+                    );
+                    successCount++;
+                    addLog(`✅ [${i + 1}/${total}] Added: ${student.name}`, 'success');
+                } catch (error) {
+                    failCount++;
+                    addLog(`❌ [${i + 1}/${total}] Failed: ${student.name} - ${error.message}`, 'error');
+                }
+                updateStats(successCount, failCount, total);
+                updateProgress(i + 1, total);
+            }
+
+            addLog(`\n✨ Migration complete!`, 'success');
+            addLog(`📊 Results: ${successCount} succeeded, ${failCount} failed out of ${total} total`, 'info');
+
+            btn.disabled = false;
+            btn.textContent = 'Migration Complete ✓';
+        }
+    </script>
+</body>
+
+</html>

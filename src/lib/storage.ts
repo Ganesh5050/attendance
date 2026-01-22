@@ -59,7 +59,7 @@ export const COURT_SCHEDULES: Record<string, Group[]> = {
 };
 
 // Sample trainers - Real coaches with unique passcodes
-const INITIAL_TRAINERS: Trainer[] = [
+export const INITIAL_TRAINERS: Trainer[] = [
   // Admin (Universal Coach - can mark attendance at any center when trainers are absent)
   { id: "admin-t1", name: "SHREE PATIL", courtId: "court-1", passcode: "0000" },
   { id: "admin-t2", name: "SHREE PATIL", courtId: "court-2", passcode: "0000" },
@@ -88,7 +88,7 @@ const INITIAL_TRAINERS: Trainer[] = [
   { id: "t10", name: "Rahul Verma", courtId: "court-5", passcode: "5738" },
 ];
 
-const INITIAL_STUDENTS: Student[] = [
+export const INITIAL_STUDENTS: Student[] = [
   // GKP Club Students (Alphabetically sorted) - All students available for both batches
   { id: "gkp-1", name: "AANIT JILLA", groupId: "gkp-all" },
   { id: "gkp-2", name: "AARUSH THAKKAR", groupId: "gkp-all" },
