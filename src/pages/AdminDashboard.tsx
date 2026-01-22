@@ -52,28 +52,30 @@ export default function AdminDashboard() {
   const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
 
   // Load Data
-  const loadData = () => {
+  const loadData = async () => {
+    // Groups are static/sync
     setGroups(storage.getGroups(courtId));
 
-    // Filter students by court - check if student ID starts with court prefix
-    const allStudents = storage.getStudents();
+    // Filter students by court
+    const allStudents = await storage.getStudents();
     const courtPrefix = courtId === "court-1" ? "gkp-" :
       courtId === "court-2" ? "kal-" :
         courtId === "court-3" ? "orch-" :
           courtId === "court-4" ? "addr-" :
             courtId === "court-5" ? "micl-" : "";
 
+    // If ID filtering fails (e.g. migration IDs are different), shows all for debugging or handle better
     const courtStudents = allStudents.filter(s => s.id.startsWith(courtPrefix));
     setStudents(courtStudents);
 
-    setAttendanceRecords(storage.getAttendance());
-    setTrainers(storage.getTrainers());
+    setAttendanceRecords(await storage.getAttendance());
+    setTrainers(await storage.getTrainers());
   };
 
   useEffect(() => {
     loadData();
     // Refresh interval to catch updates from other tabs/sessions
-    const interval = setInterval(loadData, 2000);
+    const interval = setInterval(loadData, 5000); // Increased to 5s to reduce API spam
     return () => clearInterval(interval);
   }, []);
 
@@ -121,52 +123,72 @@ export default function AdminDashboard() {
     : 0;
 
   // Actions
-  const handleAddStudent = (name: string, groupId: string) => {
+  const handleAddStudent = async (name: string, groupId: string) => {
     const newStudent = {
       id: crypto.randomUUID().slice(0, 8),
       name,
       groupId
     };
-    storage.saveStudent(newStudent);
-    toast.success(`Added ${name}`);
-    setIsAddModalOpen(false);
-    loadData();
+    try {
+      await storage.saveStudent(newStudent);
+      toast.success(`Added ${name}`);
+      setIsAddModalOpen(false);
+      loadData();
+    } catch (e) {
+      toast.error("Failed to add student");
+    }
   };
 
-  const handleRemoveStudent = (studentId: string) => {
-    storage.deleteStudent(studentId);
-    toast.success("Student removed");
-    setIsRemoveModalOpen(false);
-    // If detail modal was open for this student, close it
-    if (selectedStudent?.id === studentId) {
-      setSelectedStudent(null);
+  const handleRemoveStudent = async (studentId: string) => {
+    try {
+      await storage.deleteStudent(studentId);
+      toast.success("Student removed");
+      setIsRemoveModalOpen(false);
+      // If detail modal was open for this student, close it
+      if (selectedStudent?.id === studentId) {
+        setSelectedStudent(null);
+      }
+      loadData();
+    } catch (e) {
+      toast.error("Failed to remove student");
     }
-    loadData();
   };
 
   // Trainer Actions
-  const handleAddTrainer = (name: string, passcode: string) => {
+  const handleAddTrainer = async (name: string, passcode: string) => {
     const newTrainer = {
       id: crypto.randomUUID().slice(0, 8),
       name,
       courtId: courtId || "",
       passcode,
     };
-    storage.saveTrainer(newTrainer);
-    toast.success(`Added trainer: ${name}`);
-    loadData();
+    try {
+      await storage.saveTrainer(newTrainer);
+      toast.success(`Added trainer: ${name}`);
+      loadData();
+    } catch (e) {
+      toast.error("Failed to add trainer");
+    }
   };
 
-  const handleRemoveTrainer = (trainerId: string) => {
-    storage.deleteTrainer(trainerId);
-    toast.success("Trainer removed");
-    loadData();
+  const handleRemoveTrainer = async (trainerId: string) => {
+    try {
+      await storage.deleteTrainer(trainerId);
+      toast.success("Trainer removed");
+      loadData();
+    } catch (e) {
+      toast.error("Failed to remove trainer");
+    }
   };
 
-  const handleUpdatePasscode = (trainerId: string, newPasscode: string) => {
-    storage.updateTrainer(trainerId, { passcode: newPasscode });
-    toast.success("Passcode updated");
-    loadData();
+  const handleUpdatePasscode = async (trainerId: string, newPasscode: string) => {
+    try {
+      await storage.updateTrainer(trainerId, { passcode: newPasscode });
+      toast.success("Passcode updated");
+      loadData();
+    } catch (e) {
+      toast.error("Failed to update passcode");
+    }
   };
 
   return (

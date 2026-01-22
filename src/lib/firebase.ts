@@ -3,7 +3,7 @@ import { Client, Databases, ID } from 'appwrite';
 // Initialize Appwrite Client
 const client = new Client()
     .setEndpoint('https://sgp.cloud.appwrite.io/v1') // Your API Endpoint
-    .setProject('69722da400266760f1d7'); // Your Project ID
+    .setProject('69722da4002667601dd7'); // Your Project ID (CORRECTED!)
 
 // Initialize Databases
 export const databases = new Databases(client);

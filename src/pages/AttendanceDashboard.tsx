@@ -56,14 +56,19 @@ export default function AttendanceDashboard() {
 
   // Load initial data
   useEffect(() => {
-    const loadedGroups = storage.getGroups(courtId);
-    const loadedStudents = storage.getStudents();
-    console.log(`[AttendanceDashboard] Court: ${courtId}, Loaded ${loadedStudents.length} students:`, loadedStudents.map(s => `${s.id} (${s.groupId})`));
-    setGroups(loadedGroups);
-    setStudents(loadedStudents);
-    if (loadedGroups.length > 0) {
-      setSelectedGroupId(loadedGroups[0].id);
-    }
+    const loadData = async () => {
+      const loadedGroups = storage.getGroups(courtId); // Sync
+      const loadedStudents = await storage.getStudents(); // Async
+      console.log(`[AttendanceDashboard] Court: ${courtId}, Loaded ${loadedStudents.length} students`);
+
+      setGroups(loadedGroups);
+      setStudents(loadedStudents);
+
+      if (loadedGroups.length > 0) {
+        setSelectedGroupId(loadedGroups[0].id);
+      }
+    };
+    loadData();
   }, [courtId]);
 
   // Filter & Sort students
@@ -111,38 +116,41 @@ export default function AttendanceDashboard() {
 
   // Load existing attendance if available
   useEffect(() => {
-    if (!selectedGroupId) return;
+    const fetchAttendance = async () => {
+      if (!selectedGroupId) return;
 
-    // Reset logic when switching groups
-    setAttendance({});
-    setEventName("");
-    setSearchQuery("");
+      // Reset logic when switching groups
+      setAttendance({});
+      setEventName("");
+      setSearchQuery("");
 
-    const allRecords = storage.getAttendance();
-    const dateStr = format(selectedDate, "yyyy-MM-dd");
+      const allRecords = await storage.getAttendance(); // Async
+      const dateStr = format(selectedDate, "yyyy-MM-dd");
 
-    // Find record
-    const record = allRecords.find(
-      (r) => r.groupId === selectedGroupId && r.date === dateStr
-    );
+      // Find record
+      const record = allRecords.find(
+        (r) => r.groupId === selectedGroupId && r.date === dateStr
+      );
 
-    if (record) {
-      const newAttendance: Record<string, boolean> = {};
+      if (record) {
+        const newAttendance: Record<string, boolean> = {};
 
-      if (selectedGroupId === "others") {
-        if (record.eventName) setEventName(record.eventName);
-        // For 'others', check if student ID is in the list
-        record.presentStudentIds.forEach(id => {
-          newAttendance[id] = true;
-        });
-      } else {
-        // Only mark if the student belongs to the current group list
-        students.filter(s => s.groupId === selectedGroupId).forEach(s => {
-          newAttendance[s.id] = record.presentStudentIds.includes(s.id);
-        });
+        if (selectedGroupId === "others") {
+          if (record.eventName) setEventName(record.eventName);
+          // For 'others', check if student ID is in the list
+          record.presentStudentIds.forEach(id => {
+            newAttendance[id] = true;
+          });
+        } else {
+          // Only mark if the student belongs to the current group list
+          students.filter(s => s.groupId === selectedGroupId).forEach(s => {
+            newAttendance[s.id] = record.presentStudentIds.includes(s.id);
+          });
+        }
+        setAttendance(newAttendance);
       }
-      setAttendance(newAttendance);
-    }
+    };
+    fetchAttendance();
   }, [selectedGroupId, selectedDate, students]);
 
   const toggleAttendance = (studentId: string, checked: boolean) => {
@@ -152,7 +160,7 @@ export default function AttendanceDashboard() {
     }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isSessionActive) {
       toast.error("This group has no session scheduled for today.");
       return;
@@ -170,7 +178,7 @@ export default function AttendanceDashboard() {
         .filter(([_, isPresent]) => isPresent)
         .map(([id]) => id);
 
-      storage.saveAttendance({
+      await storage.saveAttendance({
         id: crypto.randomUUID(),
         date: format(selectedDate, "yyyy-MM-dd"),
         courtId: courtId || "",

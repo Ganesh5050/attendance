@@ -14,9 +14,9 @@ export default function Passcode() {
   const location = window.location.pathname;
   const type = typeParam || (location.includes('/admin') ? 'admin' : 'attendance');
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (type === "attendance" && courtId) {
-      const trainer = storage.validateTrainer(courtId, passcode);
+      const trainer = await storage.validateTrainer(courtId, passcode);
 
       if (trainer) {
         sessionStorage.setItem("currentTrainer", JSON.stringify(trainer));

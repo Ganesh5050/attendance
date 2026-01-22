@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { X, Calendar, CheckCircle2, XCircle, TrendingUp } from "lucide-react";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { StatCard } from "@/components/ui/StatCard";
@@ -19,34 +19,44 @@ type TimeRange = "week" | "month" | "all";
 export function StudentDetailModal({ student, onClose }: StudentDetailModalProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>("month");
 
-  const stats = useMemo(() => {
-    const allRecords = storage.getAttendance();
-    const now = new Date();
+  const [stats, setStats] = useState({
+    total: 0,
+    attended: 0,
+    missed: 0,
+    percentage: 0
+  });
 
-    // Filter records for this student's group
-    // And also by time range
-    const filteredRecords = allRecords.filter(r => {
-      if (r.groupId !== student.groupId) return false;
-      const recordDate = parseISO(r.date);
+  useEffect(() => {
+    const fetchStats = async () => {
+      const allRecords = await storage.getAttendance();
+      const now = new Date();
 
-      if (timeRange === "week") {
-        return isSameWeek(recordDate, now);
-      }
-      if (timeRange === "month") {
-        return isSameMonth(recordDate, now);
-      }
-      return true; // defined by "all"
-    });
+      // Filter records for this student's group
+      // And also by time range
+      const filteredRecords = allRecords.filter(r => {
+        if (r.groupId !== student.groupId) return false;
+        const recordDate = parseISO(r.date);
 
-    const total = filteredRecords.length;
-    const attended = filteredRecords.filter(r => r.presentStudentIds.includes(student.id)).length;
+        if (timeRange === "week") {
+          return isSameWeek(recordDate, now);
+        }
+        if (timeRange === "month") {
+          return isSameMonth(recordDate, now);
+        }
+        return true; // defined by "all"
+      });
 
-    return {
-      total,
-      attended,
-      missed: total - attended,
-      percentage: total > 0 ? (attended / total) * 100 : 0
+      const total = filteredRecords.length;
+      const attended = filteredRecords.filter(r => r.presentStudentIds.includes(student.id)).length;
+
+      setStats({
+        total,
+        attended,
+        missed: total - attended,
+        percentage: total > 0 ? (attended / total) * 100 : 0
+      });
     };
+    fetchStats();
   }, [student, timeRange]);
 
 
