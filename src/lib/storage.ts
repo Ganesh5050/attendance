@@ -119,16 +119,30 @@ export const storage = {
   },
 
   deleteStudent: async (studentId: string) => {
-    // We need to find the document by our custom 'id' attribute first if we don't have $id
-    // But ideally we should use $id. For now, let's try to query by attribute 'id'
-    const list = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTIONS.STUDENTS,
-      [Query.equal('id', studentId)]
-    );
+    try {
+      // Try efficient query first (requires index)
+      const list = await databases.listDocuments(
+        DATABASE_ID,
+        COLLECTIONS.STUDENTS,
+        [Query.equal('id', studentId)]
+      );
 
-    if (list.documents.length > 0) {
-      return await databases.deleteDocument(DATABASE_ID, COLLECTIONS.STUDENTS, list.documents[0].$id);
+      if (list.documents.length > 0) {
+        return await databases.deleteDocument(DATABASE_ID, COLLECTIONS.STUDENTS, list.documents[0].$id);
+      }
+    } catch (e) {
+      // Fallback: If index missing, fetch all and find manually
+      console.warn("Index missing for 'id', falling back to manual search");
+      // Getting 5000 limit as per getStudents
+      const list = await databases.listDocuments(
+        DATABASE_ID,
+        COLLECTIONS.STUDENTS,
+        [Query.limit(5000)]
+      );
+      const doc = list.documents.find(d => d.id === studentId);
+      if (doc) {
+        return await databases.deleteDocument(DATABASE_ID, COLLECTIONS.STUDENTS, doc.$id);
+      }
     }
   },
 

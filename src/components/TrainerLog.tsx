@@ -1,28 +1,99 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronDown, ChevronUp, Clock, User, Users, Calendar } from "lucide-react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
+import { storage } from "@/lib/storage";
 
 interface TrainerLogEntry {
     id: string;
     trainerName: string;
     batchName: string;
-    submittedAt: string;
-    presentStudents: string[];
+    submittedAt: string; // ISO String
+    presentStudents: string[]; // Names of present students
     totalStudents: number;
     date: string;
 }
 
-// Mock data for demonstration (empty until Firebase integration)
-const MOCK_ENTRIES: TrainerLogEntry[] = [
-    // Will be populated from Firebase when connected
-];
-
 export function TrainerLog() {
+    const [entries, setEntries] = useState<TrainerLogEntry[]>([]);
     const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const loadLogs = async () => {
+            setIsLoading(true);
+            try {
+                // Fetch Data
+                const allRecords = await storage.getAttendance();
+                const allStudents = await storage.getStudents();
+
+                // Group Configs to look up batch names if needed
+                const allGroups = storage.getGroups(); // Sync, but need courtId?
+                // Actually storage.getGroups requires courtId. 
+                // We can infer batch name from courtId + groupId mapping or just use groupId if not found.
+                // Better approach: Iterate all courts to build a group map
+                const groupMap: Record<string, string> = {};
+                ["court-1", "court-2", "court-3", "court-4", "court-5"].forEach(court => {
+                    const groups = storage.getGroups(court);
+                    groups.forEach(g => {
+                        groupMap[g.id] = g.name;
+                    });
+                });
+
+                const loadedEntries: TrainerLogEntry[] = allRecords.map(record => {
+                    // Get Names of Present Students
+                    const presentNames = allStudents
+                        .filter(s => record.presentStudentIds.includes(s.id))
+                        .map(s => s.name);
+
+                    // We might not have names if students were deleted, so fall back to ID if name missing
+                    // or filter them out.
+                    const finalPresentNames = presentNames.length > 0 ? presentNames : record.presentStudentIds;
+
+                    // Calculate Total Students for this batch at that time (approximate based on current students)
+                    // Or if it's 'others', it's flexible.
+                    let total = 0;
+                    if (record.groupId === 'others') {
+                        total = record.presentStudentIds.length; // 100% for events
+                    } else {
+                        // Count current students in this group
+                        total = allStudents.filter(s => s.groupId === record.groupId).length;
+                        // Avoid >100% if students moved groups
+                        if (total < record.presentStudentIds.length) total = record.presentStudentIds.length;
+                    }
+
+                    return {
+                        id: record.id,
+                        trainerName: record.trainerName,
+                        batchName: record.eventName || groupMap[record.groupId] || "Unknown Batch",
+                        submittedAt: record.date, // We treat date as submission time as we don't store exact timestamp yet, or use CreatedAt if available? 
+                        // Note: Our Appwrite Record has 'date' string (YYYY-MM-DD). 
+                        // We don't have exact time. We'll verify this.
+                        presentStudents: finalPresentNames,
+                        totalStudents: total,
+                        date: record.date
+                    };
+                });
+
+                setEntries(loadedEntries);
+            } catch (error) {
+                console.error("Failed to load trainer logs", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadLogs();
+        const interval = setInterval(loadLogs, 10000); // Auto refresh
+        return () => clearInterval(interval);
+    }, []);
 
     const toggleExpand = (id: string) => {
         setExpandedId(expandedId === id ? null : id);
     };
+
+    if (isLoading && entries.length === 0) {
+        return <div className="text-center py-10 text-muted-foreground">Loading logs...</div>;
+    }
 
     return (
         <div className="space-y-4">
@@ -36,9 +107,11 @@ export function TrainerLog() {
             </div>
 
             <div className="space-y-3">
-                {MOCK_ENTRIES.map((entry) => {
+                {entries.map((entry) => {
                     const isExpanded = expandedId === entry.id;
-                    const attendanceRate = Math.round((entry.presentStudents.length / entry.totalStudents) * 100);
+                    const attendanceRate = entry.totalStudents > 0
+                        ? Math.round((entry.presentStudents.length / entry.totalStudents) * 100)
+                        : 0;
 
                     return (
                         <div
@@ -69,7 +142,8 @@ export function TrainerLog() {
                                             <div className="flex items-center gap-1.5">
                                                 <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                                                 <span className="text-muted-foreground">
-                                                    {format(new Date(entry.submittedAt), "h:mm a")}
+                                                    {entry.date}
+                                                    {/* We only have date, not time, unless we add createdAt to record model */}
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-1.5">
@@ -127,8 +201,8 @@ export function TrainerLog() {
                 })}
             </div>
 
-            {/* Empty State (hidden when there are entries) */}
-            {MOCK_ENTRIES.length === 0 && (
+            {/* Empty State */}
+            {!isLoading && entries.length === 0 && (
                 <div className="text-center py-12 text-muted-foreground">
                     <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
                     <p>No attendance submissions yet</p>
