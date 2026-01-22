@@ -189,6 +189,7 @@ export const storage = {
       COLLECTIONS.ATTENDANCE,
       generateId(),
       {
+        id: record.id, // Explicitly sending custom 'id' attribute as required by schema
         date: record.date,
         courtId: record.courtId,
         groupId: record.groupId,
