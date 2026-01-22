@@ -5,8 +5,8 @@ import { Header } from "@/components/layout/Header";
 const COURTS = [
     { id: "court-1", name: "GKP Club", color: "bg-blue-500/10 border-blue-500/30 hover:border-blue-500/50" },
     { id: "court-2", name: "Kalptaru Aura", color: "bg-green-500/10 border-green-500/30 hover:border-green-500/50" },
-    { id: "court-3", name: "The Address (Wadhwa)", color: "bg-purple-500/10 border-purple-500/30 hover:border-purple-500/50" },
-    { id: "court-4", name: "The Orchards", color: "bg-orange-500/10 border-orange-500/30 hover:border-orange-500/50" },
+    { id: "court-3", name: "The Orchards", color: "bg-orange-500/10 border-orange-500/30 hover:border-orange-500/50" },
+    { id: "court-4", name: "The Address (Wadhwa)", color: "bg-purple-500/10 border-purple-500/30 hover:border-purple-500/50" },
     { id: "court-5", name: "Aaradhya One MICL", color: "bg-pink-500/10 border-pink-500/30 hover:border-pink-500/50" },
 ];
 

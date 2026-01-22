@@ -21,7 +21,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { format, isMonday, isWednesday, isFriday } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"; // Rename to avoid conflict with Icon
+import { format, getDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { storage, Group, Student, getCourtName } from "@/lib/storage";
@@ -39,8 +41,10 @@ export default function AttendanceDashboard() {
   const [students, setStudents] = useState<Student[]>([]);
 
   const [selectedGroupId, setSelectedGroupId] = useState<string>("");
-  // Lock date to today
-  const [selectedDate] = useState<Date>(new Date());
+
+  // Allow date flexibility - Default to today
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   // "Others" specific state
   const [eventName, setEventName] = useState("");
@@ -52,17 +56,20 @@ export default function AttendanceDashboard() {
 
   // Load initial data
   useEffect(() => {
-    const loadedGroups = storage.getGroups();
+    const loadedGroups = storage.getGroups(courtId);
     const loadedStudents = storage.getStudents();
+    console.log(`[AttendanceDashboard] Court: ${courtId}, Loaded ${loadedStudents.length} students:`, loadedStudents.map(s => `${s.id} (${s.groupId})`));
     setGroups(loadedGroups);
     setStudents(loadedStudents);
     if (loadedGroups.length > 0) {
       setSelectedGroupId(loadedGroups[0].id);
     }
-  }, []);
+  }, [courtId]);
 
   // Filter & Sort students
   const filteredStudents = useMemo(() => {
+    console.log(`[Filter] courtId: ${courtId}, selectedGroupId: ${selectedGroupId}, total students: ${students.length}`);
+
     if (selectedGroupId === "others") {
       // Show ALL students, filtered by search query
       return students
@@ -70,19 +77,37 @@ export default function AttendanceDashboard() {
         .sort((a, b) => a.name.localeCompare(b.name));
     }
 
-    // Normal group behavior
+    // Determine the expected groupId based on courtId
+    const courtGroupId = courtId === "court-1" ? "gkp-all" :
+      courtId === "court-2" ? "kal-all" :
+        courtId === "court-3" ? "orch-all" :
+          courtId === "court-4" ? "addr-all" :
+            courtId === "court-5" ? "micl-all" : "";
+
+    // If this court uses the "all students" model, show all students for that court
+    if (courtGroupId && students.some(s => s.groupId === courtGroupId)) {
+      return students
+        .filter((s) => s.groupId === courtGroupId)
+        .sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    // Normal group behavior for other courts (future courts with specific groups)
     return students
       .filter((s) => s.groupId === selectedGroupId)
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [students, selectedGroupId, searchQuery]);
+  }, [students, selectedGroupId, searchQuery, courtId]);
 
   // Check if session is active
   const isSessionActive = useMemo(() => {
     if (selectedGroupId === "others") return true;
 
-    // Regular groups restricted to Mon/Wed/Fri
-    return isMonday(selectedDate) || isWednesday(selectedDate) || isFriday(selectedDate);
-  }, [selectedDate, selectedGroupId]);
+    // Find the current group config
+    const currentGroup = groups.find(g => g.id === selectedGroupId);
+    if (!currentGroup || !currentGroup.days) return true; // Default to allow if no restriction
+
+    const currentDay = getDay(selectedDate); // 0=Sun, 1=Mon...
+    return currentGroup.days.includes(currentDay);
+  }, [selectedDate, selectedGroupId, groups]);
 
   // Load existing attendance if available
   useEffect(() => {
@@ -129,7 +154,7 @@ export default function AttendanceDashboard() {
 
   const handleSubmit = () => {
     if (!isSessionActive) {
-      toast.error("Regular sessions are only on Mon, Wed, or Fri.");
+      toast.error("This group has no session scheduled for today.");
       return;
     }
 
@@ -240,18 +265,40 @@ export default function AttendanceDashboard() {
             </div>
           )}
 
-          {/* Date Display (Locked) */}
+          {/* Date Selector */}
           <div className={selectedGroupId === "others" ? "opacity-70" : ""}>
             <label className="text-sm font-medium text-muted-foreground mb-2 block">
               Date
             </label>
-            <div className="dropdown-trigger w-full opacity-100 cursor-default bg-muted/50">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="text-foreground">{format(selectedDate, "PPP")}</span>
-                <span className="ml-auto text-xs text-muted-foreground">(Today)</span>
-              </div>
-            </div>
+            <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  className={cn(
+                    "dropdown-trigger w-full flex items-center gap-2 text-left font-normal transition-colors",
+                    !selectedDate && "text-muted-foreground"
+                  )}
+                >
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-foreground">
+                    {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
+                  </span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setSelectedDate(date);
+                      setIsDatePickerOpen(false);
+                    }
+                  }}
+                  initialFocus
+                  className="rounded-md border shadow-md bg-card"
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Session Info */}
@@ -263,7 +310,7 @@ export default function AttendanceDashboard() {
                   No Session Today
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Sessions differ on Mon, Wed, Fri only
+                  Session not scheduled for this day
                 </p>
               </div>
             </div>

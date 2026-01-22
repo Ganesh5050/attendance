@@ -10,6 +10,7 @@ import { RemoveStudentModal } from "@/components/RemoveStudentModal";
 import { DailyAttendanceReport } from "@/components/DailyAttendanceReport";
 import { TrainerManagement } from "@/components/TrainerManagement";
 import { TrainerAttendance } from "@/components/TrainerAttendance";
+import { TrainerLog } from "@/components/TrainerLog";
 import {
   Select,
   SelectContent,
@@ -31,7 +32,7 @@ interface StudentStats extends Student {
   totalSessions: number;
 }
 
-type AdminTab = "trainers" | "trainer-attendance" | "students";
+type AdminTab = "trainers" | "trainer-attendance" | "trainer-log" | "students";
 
 export default function AdminDashboard() {
   const { courtId } = useParams<{ courtId: string }>();
@@ -52,8 +53,19 @@ export default function AdminDashboard() {
 
   // Load Data
   const loadData = () => {
-    setGroups(storage.getGroups());
-    setStudents(storage.getStudents());
+    setGroups(storage.getGroups(courtId));
+
+    // Filter students by court - check if student ID starts with court prefix
+    const allStudents = storage.getStudents();
+    const courtPrefix = courtId === "court-1" ? "gkp-" :
+      courtId === "court-2" ? "kal-" :
+        courtId === "court-3" ? "orch-" :
+          courtId === "court-4" ? "addr-" :
+            courtId === "court-5" ? "micl-" : "";
+
+    const courtStudents = allStudents.filter(s => s.id.startsWith(courtPrefix));
+    setStudents(courtStudents);
+
     setAttendanceRecords(storage.getAttendance());
     setTrainers(storage.getTrainers());
   };
@@ -189,6 +201,17 @@ export default function AdminDashboard() {
             )}
           >
             Attendance Log
+          </button>
+          <button
+            onClick={() => setActiveTab("trainer-log")}
+            className={cn(
+              "flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+              activeTab === "trainer-log"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Trainer Log
           </button>
           <button
             onClick={() => setActiveTab("trainers")}
@@ -423,6 +446,11 @@ export default function AdminDashboard() {
             trainers={trainers}
             groups={groups}
           />
+        )}
+
+        {/* Trainer Log Tab */}
+        {activeTab === "trainer-log" && (
+          <TrainerLog />
         )}
 
         {/* Trainers Tab */}
