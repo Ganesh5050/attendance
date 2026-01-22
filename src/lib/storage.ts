@@ -189,8 +189,9 @@ export const storage = {
       COLLECTIONS.ATTENDANCE,
       generateId(),
       {
-        id: record.id, // Explicitly sending custom 'id' attribute as required by schema
+        id: record.id,
         date: record.date,
+        submittedAt: new Date().toISOString(), // Add current timestamp
         courtId: record.courtId,
         groupId: record.groupId,
         trainerId: record.trainerId,
