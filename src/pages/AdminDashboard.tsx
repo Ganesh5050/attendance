@@ -52,17 +52,21 @@ export default function AdminDashboard() {
   const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
 
   // Load Data
+  const getCourtPrefix = (courtId: string | undefined): string => {
+    return courtId === "court-1" ? "gkp-" :
+      courtId === "court-2" ? "kalp-" :
+        courtId === "court-3" ? "orch-" :
+          courtId === "court-4" ? "addr-" :
+            courtId === "court-5" ? "micl-" : "";
+  };
+
   const loadData = async () => {
     // Groups are static/sync
     setGroups(storage.getGroups(courtId));
 
     // Filter students by court
     const allStudents = await storage.getStudents();
-    const courtPrefix = courtId === "court-1" ? "gkp-" :
-      courtId === "court-2" ? "kal-" :
-        courtId === "court-3" ? "orch-" :
-          courtId === "court-4" ? "addr-" :
-            courtId === "court-5" ? "micl-" : "";
+    const courtPrefix = getCourtPrefix(courtId);
 
     // If ID filtering fails (e.g. migration IDs are different), shows all for debugging or handle better
     const courtStudents = allStudents.filter(s => s.id.startsWith(courtPrefix));
@@ -126,8 +130,11 @@ export default function AdminDashboard() {
 
   // Actions
   const handleAddStudent = async (name: string, groupId: string) => {
+    // Generate ID with court prefix so it shows up in filtered list
+    const courtPrefix = getCourtPrefix(courtId);
+
     const newStudent = {
-      id: crypto.randomUUID().slice(0, 8),
+      id: courtPrefix + crypto.randomUUID().slice(0, 8),
       name,
       groupId
     };

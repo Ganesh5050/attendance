@@ -14,7 +14,7 @@ interface StudentDetailModalProps {
   onClose: () => void;
 }
 
-type TimeRange = "week" | "month" | "all";
+type TimeRange = "today" | "week" | "month" | "all";
 
 export function StudentDetailModal({ student, onClose }: StudentDetailModalProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>("month");
@@ -37,6 +37,9 @@ export function StudentDetailModal({ student, onClose }: StudentDetailModalProps
         if (r.groupId !== student.groupId) return false;
         const recordDate = parseISO(r.date);
 
+        if (timeRange === "today") {
+          return recordDate.toDateString() === now.toDateString();
+        }
         if (timeRange === "week") {
           return isSameWeek(recordDate, now);
         }
@@ -47,7 +50,11 @@ export function StudentDetailModal({ student, onClose }: StudentDetailModalProps
       });
 
       const total = filteredRecords.length;
-      const attended = filteredRecords.filter(r => r.presentStudentIds.includes(student.id)).length;
+      const attended = filteredRecords.filter(r =>
+        Array.isArray(r.presentStudentIds) && r.presentStudentIds.some(pid =>
+          pid.trim().toLowerCase() === student.id.trim().toLowerCase()
+        )
+      ).length;
 
       setStats({
         total,
@@ -90,22 +97,28 @@ export function StudentDetailModal({ student, onClose }: StudentDetailModalProps
         </div>
 
         {/* Time Range Selector */}
-        <div className="flex gap-2 mb-6">
+        <div className="grid grid-cols-2 gap-2 mb-6">
+          <button
+            onClick={() => setTimeRange("today")}
+            className={`py-2 px-4 rounded-xl text-sm font-medium transition-colors ${timeRange === "today" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+          >
+            Today
+          </button>
           <button
             onClick={() => setTimeRange("week")}
-            className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-colors ${timeRange === "week" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+            className={`py-2 px-4 rounded-xl text-sm font-medium transition-colors ${timeRange === "week" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
           >
             This Week
           </button>
           <button
             onClick={() => setTimeRange("month")}
-            className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-colors ${timeRange === "month" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+            className={`py-2 px-4 rounded-xl text-sm font-medium transition-colors ${timeRange === "month" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
           >
             This Month
           </button>
           <button
             onClick={() => setTimeRange("all")}
-            className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-colors ${timeRange === "all" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+            className={`py-2 px-4 rounded-xl text-sm font-medium transition-colors ${timeRange === "all" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
           >
             All Time
           </button>
