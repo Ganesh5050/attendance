@@ -26,6 +26,7 @@ export interface Trainer {
 export interface AttendanceRecord {
   id: string;
   date: string; // ISO date string YYYY-MM-DD
+  submittedAt?: string; // Full ISO timestamp when attendance was marked
   courtId: string;
   groupId: string;
   trainerId: string; // Who marked this attendance

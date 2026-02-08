@@ -66,9 +66,7 @@ export function TrainerLog({ courtId }: TrainerLogProps) {
                         id: record.id,
                         trainerName: record.trainerName,
                         batchName: record.eventName || groupMap[record.groupId] || "Unknown Batch",
-                        submittedAt: record.date, // We treat date as submission time as we don't store exact timestamp yet, or use CreatedAt if available? 
-                        // Note: Our Appwrite Record has 'date' string (YYYY-MM-DD). 
-                        // We don't have exact time. We'll verify this.
+                        submittedAt: record.submittedAt || record.date, // Use full timestamp if available, fallback to date
                         presentStudents: finalPresentNames,
                         totalStudents: total,
                         date: record.date
@@ -143,8 +141,17 @@ export function TrainerLog({ courtId }: TrainerLogProps) {
                                             <div className="flex items-center gap-1.5">
                                                 <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                                                 <span className="text-muted-foreground">
-                                                    {entry.date}
-                                                    {/* We only have date, not time, unless we add createdAt to record model */}
+                                                    {entry.submittedAt.includes('T')
+                                                        ? new Date(entry.submittedAt).toLocaleString('en-IN', {
+                                                            month: 'short',
+                                                            day: 'numeric',
+                                                            year: 'numeric',
+                                                            hour: 'numeric',
+                                                            minute: '2-digit',
+                                                            hour12: true
+                                                        })
+                                                        : entry.date
+                                                    }
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-1.5">
