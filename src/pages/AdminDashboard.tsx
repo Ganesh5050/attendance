@@ -133,10 +133,13 @@ export default function AdminDashboard() {
     // Generate ID with court prefix so it shows up in filtered list
     const courtPrefix = getCourtPrefix(courtId);
 
+    // For GKP court, always use "gkp-all" as groupId so student appears in AttendanceDashboard
+    const finalGroupId = courtId === "court-1" ? "gkp-all" : groupId;
+
     const newStudent = {
       id: courtPrefix + crypto.randomUUID().slice(0, 8),
       name,
-      groupId
+      groupId: finalGroupId
     };
     try {
       await storage.saveStudent(newStudent);
@@ -510,7 +513,7 @@ export default function AdminDashboard() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAdd={handleAddStudent}
-        groups={groups}
+        groups={courtId === "court-1" ? [{ id: "gkp-all", name: "Universal / All Batches", days: [1, 3, 5] }] : groups}
       />
 
       {/* Remove Student Modal */}
@@ -518,7 +521,7 @@ export default function AdminDashboard() {
         isOpen={isRemoveModalOpen}
         onClose={() => setIsRemoveModalOpen(false)}
         onRemove={handleRemoveStudent}
-        groups={groups}
+        groups={courtId === "court-1" ? [{ id: "gkp-all", name: "Universal / All Batches", days: [1, 3, 5] }] : groups}
         students={students}
       />
     </div>
