@@ -168,6 +168,7 @@ export const storage = {
       return response.documents.map(doc => ({
         id: doc.$id,
         date: doc.date,
+        submittedAt: doc.submittedAt || doc.$createdAt, // Use explicit timestamp or fallback to creation time
         courtId: doc.courtId,
         groupId: doc.groupId,
         trainerId: doc.trainerId,

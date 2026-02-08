@@ -60,6 +60,20 @@ export default function AdminDashboard() {
             courtId === "court-5" ? "micl-" : "";
   };
 
+  // Check if court uses universal student model (all students can attend any batch)
+  const isUniversalCourt = (courtId: string | undefined): boolean => {
+    return courtId === "court-1" || // GKP Club
+      courtId === "court-3" || // The Orchards
+      courtId === "court-5";   // Aaradhya MICL
+  };
+
+  // Get universal groupId for universal courts
+  const getUniversalGroupId = (courtId: string | undefined): string => {
+    return courtId === "court-1" ? "gkp-all" :
+      courtId === "court-3" ? "orch-all" :
+        courtId === "court-5" ? "micl-all" : "";
+  };
+
   const loadData = async () => {
     // Groups are static/sync
     setGroups(storage.getGroups(courtId));
@@ -133,8 +147,10 @@ export default function AdminDashboard() {
     // Generate ID with court prefix so it shows up in filtered list
     const courtPrefix = getCourtPrefix(courtId);
 
-    // For GKP court, always use "gkp-all" as groupId so student appears in AttendanceDashboard
-    const finalGroupId = courtId === "court-1" ? "gkp-all" : groupId;
+    // For universal courts (GKP, Orchards, MICL), always use universal groupId
+    const finalGroupId = isUniversalCourt(courtId)
+      ? getUniversalGroupId(courtId)
+      : groupId;
 
     const newStudent = {
       id: courtPrefix + crypto.randomUUID().slice(0, 8),
@@ -513,7 +529,7 @@ export default function AdminDashboard() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAdd={handleAddStudent}
-        groups={courtId === "court-1" ? [{ id: "gkp-all", name: "Universal / All Batches", days: [1, 3, 5] }] : groups}
+        groups={isUniversalCourt(courtId) ? [{ id: getUniversalGroupId(courtId), name: "Universal / All Batches", days: [1, 3, 5] }] : groups}
       />
 
       {/* Remove Student Modal */}
@@ -521,7 +537,7 @@ export default function AdminDashboard() {
         isOpen={isRemoveModalOpen}
         onClose={() => setIsRemoveModalOpen(false)}
         onRemove={handleRemoveStudent}
-        groups={courtId === "court-1" ? [{ id: "gkp-all", name: "Universal / All Batches", days: [1, 3, 5] }] : groups}
+        groups={isUniversalCourt(courtId) ? [{ id: getUniversalGroupId(courtId), name: "Universal / All Batches", days: [1, 3, 5] }] : groups}
         students={students}
       />
     </div>

@@ -83,20 +83,20 @@ export default function AttendanceDashboard() {
     }
 
     // Determine the expected groupId based on courtId
-    const courtGroupId = courtId === "court-1" ? "gkp-all" :
-      courtId === "court-2" ? "kal-all" :
+    // Determine if this is a universal court
+    const universalGroupId =
+      courtId === "court-1" ? "gkp-all" :
         courtId === "court-3" ? "orch-all" :
-          courtId === "court-4" ? "addr-all" :
-            courtId === "court-5" ? "micl-all" : "";
+          courtId === "court-5" ? "micl-all" : null;
 
-    // If this court uses the "all students" model, show all students for that court
-    if (courtGroupId && students.some(s => s.groupId === courtGroupId)) {
+    // If universal court, show all students for that court
+    if (universalGroupId) {
       return students
-        .filter((s) => s.groupId === courtGroupId)
+        .filter((s) => s.groupId === universalGroupId)
         .sort((a, b) => a.name.localeCompare(b.name));
     }
 
-    // Normal group behavior for other courts (future courts with specific groups)
+    // For Time-Specific courts (Kalptaru, Address), filter by the selected time slot
     return students
       .filter((s) => s.groupId === selectedGroupId)
       .sort((a, b) => a.name.localeCompare(b.name));
