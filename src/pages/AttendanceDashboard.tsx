@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { Calendar, Users, Info, CheckCircle2, Search, MapPin } from "lucide-react";
+import { Calendar, Users, Info, CheckCircle2, Search, MapPin, UserPlus, UserMinus } from "lucide-react";
+import { AddStudentModal } from "@/components/AddStudentModal";
+import { RemoveStudentModal } from "@/components/RemoveStudentModal";
 import { Header } from "@/components/layout/Header";
 import { StickyBottom } from "@/components/layout/StickyBottom";
 import { StudentCard } from "@/components/ui/StudentCard";
@@ -50,9 +52,34 @@ export default function AttendanceDashboard() {
   const [eventName, setEventName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Modal states for Add/Remove Student
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
+
   const [attendance, setAttendance] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+
+  // Helper functions for court logic
+  const getCourtPrefix = (courtId: string | undefined): string => {
+    return courtId === "court-1" ? "gkp-" :
+      courtId === "court-2" ? "kalp-" :
+        courtId === "court-3" ? "orch-" :
+          courtId === "court-4" ? "addr-" :
+            courtId === "court-5" ? "micl-" : "";
+  };
+
+  const isUniversalCourt = (courtId: string | undefined): boolean => {
+    return courtId === "court-1" || // GKP Club
+      courtId === "court-3" || // The Orchards
+      courtId === "court-5";   // Aaradhya MICL
+  };
+
+  const getUniversalGroupId = (courtId: string | undefined): string => {
+    return courtId === "court-1" ? "gkp-all" :
+      courtId === "court-3" ? "orch-all" :
+        courtId === "court-5" ? "micl-all" : "";
+  };
 
   // Load initial data
   useEffect(() => {
@@ -71,6 +98,46 @@ export default function AttendanceDashboard() {
     loadData();
   }, [courtId]);
 
+  // Handler functions for Add/Remove Student
+  const handleAddStudent = async (name: string, groupId: string) => {
+    const courtPrefix = getCourtPrefix(courtId);
+    const finalGroupId = isUniversalCourt(courtId)
+      ? getUniversalGroupId(courtId)
+      : groupId;
+
+    const newStudent = {
+      id: courtPrefix + crypto.randomUUID().slice(0, 8),
+      name,
+      groupId: finalGroupId
+    };
+
+    try {
+      await storage.saveStudent(newStudent);
+      toast.success(`Added ${name}`);
+      setIsAddModalOpen(false);
+
+      // Reload students
+      const loadedStudents = await storage.getStudents();
+      setStudents(loadedStudents);
+    } catch (e) {
+      toast.error("Failed to add student");
+    }
+  };
+
+  const handleRemoveStudent = async (studentId: string) => {
+    try {
+      await storage.deleteStudent(studentId);
+      toast.success("Student removed");
+      setIsRemoveModalOpen(false);
+
+      // Reload students
+      const loadedStudents = await storage.getStudents();
+      setStudents(loadedStudents);
+    } catch (e) {
+      toast.error("Failed to remove student");
+    }
+  };
+
   // Filter & Sort students
   const filteredStudents = useMemo(() => {
     console.log(`[Filter] courtId: ${courtId}, selectedGroupId: ${selectedGroupId}, total students: ${students.length}`);
@@ -83,20 +150,20 @@ export default function AttendanceDashboard() {
     }
 
     // Determine the expected groupId based on courtId
-    // Determine if this is a universal court
-    const universalGroupId =
-      courtId === "court-1" ? "gkp-all" :
+    const courtGroupId = courtId === "court-1" ? "gkp-all" :
+      courtId === "court-2" ? "kal-all" :
         courtId === "court-3" ? "orch-all" :
-          courtId === "court-5" ? "micl-all" : null;
+          courtId === "court-4" ? "addr-all" :
+            courtId === "court-5" ? "micl-all" : "";
 
-    // If universal court, show all students for that court
-    if (universalGroupId) {
+    // If this court uses the "all students" model, show all students for that court
+    if (courtGroupId && students.some(s => s.groupId === courtGroupId)) {
       return students
-        .filter((s) => s.groupId === universalGroupId)
+        .filter((s) => s.groupId === courtGroupId)
         .sort((a, b) => a.name.localeCompare(b.name));
     }
 
-    // For Time-Specific courts (Kalptaru, Address), filter by the selected time slot
+    // Normal group behavior for other courts (future courts with specific groups)
     return students
       .filter((s) => s.groupId === selectedGroupId)
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -214,6 +281,24 @@ export default function AttendanceDashboard() {
       <div className="container max-w-lg mx-auto px-4 py-6 animate-slide-up">
         {/* Control Section */}
         <div className="space-y-4 mb-6">
+          {/* Add/Remove Student Buttons */}
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-card border border-border/50 text-foreground font-medium transition-all hover:border-primary/30 hover:shadow-md active:scale-[0.98]"
+            >
+              <UserPlus className="h-5 w-5 text-primary" />
+              <span>Add Student</span>
+            </button>
+            <button
+              onClick={() => setIsRemoveModalOpen(true)}
+              className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-card border border-border/50 text-foreground font-medium transition-all hover:border-primary/30 hover:shadow-md active:scale-[0.98]"
+            >
+              <UserMinus className="h-5 w-5 text-muted-foreground" />
+              <span>Remove Student</span>
+            </button>
+          </div>
+
           {/* Group Selector */}
           <div>
             <label className="text-sm font-medium text-muted-foreground mb-2 block">
@@ -414,6 +499,23 @@ export default function AttendanceDashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add Student Modal */}
+      <AddStudentModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onAdd={handleAddStudent}
+        groups={isUniversalCourt(courtId) ? [{ id: getUniversalGroupId(courtId), name: "Universal / All Batches", days: [1, 3, 5] }] : groups}
+      />
+
+      {/* Remove Student Modal */}
+      <RemoveStudentModal
+        isOpen={isRemoveModalOpen}
+        onClose={() => setIsRemoveModalOpen(false)}
+        onRemove={handleRemoveStudent}
+        groups={isUniversalCourt(courtId) ? [{ id: getUniversalGroupId(courtId), name: "Universal / All Batches", days: [1, 3, 5] }] : groups}
+        students={students}
+      />
     </div>
   );
 }

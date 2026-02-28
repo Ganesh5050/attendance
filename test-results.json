@@ -1,0 +1,67 @@
+{
+  "passed": 10,
+  "failed": 0,
+  "tests": [
+    {
+      "test": 1,
+      "name": "Load Students",
+      "pass": true,
+      "detail": "25 students"
+    },
+    {
+      "test": 2,
+      "name": "Load Attendance",
+      "pass": true,
+      "detail": "9 records"
+    },
+    {
+      "test": 3,
+      "name": "ID Format",
+      "pass": true,
+      "detail": "All valid"
+    },
+    {
+      "test": 4,
+      "name": "Time Calculations",
+      "pass": true,
+      "detail": "5 students tested"
+    },
+    {
+      "test": 5,
+      "name": "Percentage Calc",
+      "pass": true,
+      "detail": "0.0%"
+    },
+    {
+      "test": 6,
+      "name": "ID Matching",
+      "pass": true,
+      "detail": "Robust"
+    },
+    {
+      "test": 7,
+      "name": "Edge Cases",
+      "pass": true,
+      "detail": "All handled"
+    },
+    {
+      "test": 8,
+      "name": "Data Integrity",
+      "pass": true,
+      "detail": "All valid"
+    },
+    {
+      "test": 9,
+      "name": "Date Parsing",
+      "pass": true,
+      "detail": "All dates valid"
+    },
+    {
+      "test": 10,
+      "name": "Performance",
+      "pass": true,
+      "detail": "0ms"
+    }
+  ],
+  "successRate": "100.0"
+}
