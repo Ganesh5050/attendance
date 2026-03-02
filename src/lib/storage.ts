@@ -1,5 +1,4 @@
-import { databases, DATABASE_ID, COLLECTIONS, generateId } from './appwrite';
-import { Query } from 'appwrite';
+import { supabase, generateId } from './supabase';
 
 // Types
 export interface Student {
@@ -83,22 +82,23 @@ export const PASSCODES = {
   ADMIN: "0000",
 };
 
-// Storage API - NOW ASYNC FOR APPWRITE
+// Storage API - NOW ASYNC FOR SUPABASE
 export const storage = {
   // Students
   getStudents: async (): Promise<Student[]> => {
     try {
-      // Fetch maximum 5000 students (Appwrite limits default to 25)
-      const response = await databases.listDocuments(
-        DATABASE_ID,
-        COLLECTIONS.STUDENTS,
-        [Query.limit(5000)]
-      );
-      return response.documents.map(doc => ({
-        id: doc.id || doc.$id, // Handle both our manual ID and Appwrite's internal $id
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .limit(5000);
+
+      if (error) throw error;
+
+      return (data || []).map(doc => ({
+        id: doc.id,
         name: doc.name,
         groupId: doc.groupId,
-        $id: doc.$id
+        $id: doc.id
       }));
     } catch (error) {
       console.error("Failed to fetch students:", error);
@@ -107,44 +107,26 @@ export const storage = {
   },
 
   saveStudent: async (student: Student) => {
-    return await databases.createDocument(
-      DATABASE_ID,
-      COLLECTIONS.STUDENTS,
-      generateId(),
-      {
+    const { data, error } = await supabase
+      .from('students')
+      .insert([{
         id: student.id || generateId(),
         name: student.name,
         groupId: student.groupId
-      }
-    );
+      }])
+      .select();
+
+    if (error) throw error;
+    return data ? data[0] : null;
   },
 
   deleteStudent: async (studentId: string) => {
-    try {
-      // Try efficient query first (requires index)
-      const list = await databases.listDocuments(
-        DATABASE_ID,
-        COLLECTIONS.STUDENTS,
-        [Query.equal('id', studentId)]
-      );
+    const { error } = await supabase
+      .from('students')
+      .delete()
+      .eq('id', studentId);
 
-      if (list.documents.length > 0) {
-        return await databases.deleteDocument(DATABASE_ID, COLLECTIONS.STUDENTS, list.documents[0].$id);
-      }
-    } catch (e) {
-      // Fallback: If index missing, fetch all and find manually
-      console.warn("Index missing for 'id', falling back to manual search");
-      // Getting 5000 limit as per getStudents
-      const list = await databases.listDocuments(
-        DATABASE_ID,
-        COLLECTIONS.STUDENTS,
-        [Query.limit(5000)]
-      );
-      const doc = list.documents.find(d => d.id === studentId);
-      if (doc) {
-        return await databases.deleteDocument(DATABASE_ID, COLLECTIONS.STUDENTS, doc.$id);
-      }
-    }
+    if (error) throw error;
   },
 
   // Groups (No DB change needed - static)
@@ -158,24 +140,25 @@ export const storage = {
   // Attendance
   getAttendance: async (): Promise<AttendanceRecord[]> => {
     try {
-      const response = await databases.listDocuments(
-        DATABASE_ID,
-        COLLECTIONS.ATTENDANCE,
-        [Query.limit(5000), Query.orderDesc('date')]
-      );
+      const { data, error } = await supabase
+        .from('attendance')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(5000);
 
-      // We need to parse 'presentStudentIds' as it might be stored as string array
-      return response.documents.map(doc => ({
-        id: doc.$id,
+      if (error) throw error;
+
+      return (data || []).map(doc => ({
+        id: doc.id,
         date: doc.date,
-        submittedAt: doc.submittedAt || doc.$createdAt, // Use explicit timestamp or fallback to creation time
+        submittedAt: doc.submittedAt || doc.created_at,
         courtId: doc.courtId,
         groupId: doc.groupId,
         trainerId: doc.trainerId,
         trainerName: doc.trainerName,
         eventName: doc.eventName,
-        presentStudentIds: doc.presentStudentIds, // Appwrite handles string arrays
-        $id: doc.$id
+        presentStudentIds: doc.presentStudentIds || [],
+        $id: doc.id
       }));
     } catch (error) {
       console.error("Failed to fetch attendance:", error);
@@ -184,40 +167,41 @@ export const storage = {
   },
 
   saveAttendance: async (record: AttendanceRecord) => {
-    // Note context: Appwrite attributes must match exactly. 
-    // presentStudentIds is an array of strings.
-    return await databases.createDocument(
-      DATABASE_ID,
-      COLLECTIONS.ATTENDANCE,
-      generateId(),
-      {
-        id: record.id,
+    const { data, error } = await supabase
+      .from('attendance')
+      .insert([{
+        id: record.id || generateId(),
         date: record.date,
-        submittedAt: new Date().toISOString(), // Add current timestamp
-        courtId: record.courtId,
-        groupId: record.groupId,
-        trainerId: record.trainerId,
-        trainerName: record.trainerName,
-        eventName: record.eventName,
-        presentStudentIds: record.presentStudentIds
-      }
-    );
+        "submittedAt": new Date().toISOString(),
+        "courtId": record.courtId,
+        "groupId": record.groupId,
+        "trainerId": record.trainerId,
+        "trainerName": record.trainerName,
+        "eventName": record.eventName,
+        "presentStudentIds": record.presentStudentIds || []
+      }])
+      .select();
+
+    if (error) throw error;
+    return data ? data[0] : null;
   },
 
   // Trainers
   getTrainers: async (): Promise<Trainer[]> => {
     try {
-      const response = await databases.listDocuments(
-        DATABASE_ID,
-        COLLECTIONS.TRAINERS,
-        [Query.limit(100)]
-      );
-      return response.documents.map(doc => ({
-        id: doc.$id, // Using internal ID as primary
+      const { data, error } = await supabase
+        .from('trainers')
+        .select('*')
+        .limit(100);
+
+      if (error) throw error;
+
+      return (data || []).map(doc => ({
+        id: doc.id,
         name: doc.name,
         courtId: doc.courtId,
         passcode: doc.passcode,
-        $id: doc.$id
+        $id: doc.id
       }));
     } catch (error) {
       console.error("Failed to fetch trainers:", error);
@@ -226,50 +210,67 @@ export const storage = {
   },
 
   saveTrainer: async (trainer: Trainer) => {
-    return await databases.createDocument(
-      DATABASE_ID,
-      COLLECTIONS.TRAINERS,
-      generateId(),
-      {
+    const { data, error } = await supabase
+      .from('trainers')
+      .insert([{
+        id: trainer.id || generateId(),
         name: trainer.name,
-        courtId: trainer.courtId,
+        "courtId": trainer.courtId,
         passcode: trainer.passcode
-      }
-    );
+      }])
+      .select();
+
+    if (error) throw error;
+    return data ? data[0] : null;
   },
 
   updateTrainer: async (id: string, updates: Partial<Trainer>) => {
-    // 'id' here assumes the document ID ($id)
-    return await databases.updateDocument(
-      DATABASE_ID,
-      COLLECTIONS.TRAINERS,
-      id,
-      updates
-    );
+    const updateData: any = { ...updates };
+    delete updateData.id;
+    delete updateData.$id;
+
+    // Ensure case matching for supabase
+    if (updateData.courtId) {
+      updateData["courtId"] = updateData.courtId;
+    }
+
+    const { data, error } = await supabase
+      .from('trainers')
+      .update(updateData)
+      .eq('id', id)
+      .select();
+
+    if (error) throw error;
+    return data && data[0] ? data[0] : null;
   },
 
   deleteTrainer: async (id: string) => {
-    return await databases.deleteDocument(DATABASE_ID, COLLECTIONS.TRAINERS, id);
+    const { error } = await supabase
+      .from('trainers')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
   },
 
   validateTrainer: async (courtId: string, passcode: string): Promise<Trainer | null> => {
     try {
-      const response = await databases.listDocuments(
-        DATABASE_ID,
-        COLLECTIONS.TRAINERS,
-        [
-          Query.equal('courtId', courtId),
-          Query.equal('passcode', passcode)
-        ]
-      );
-      if (response.documents.length > 0) {
-        const doc = response.documents[0];
+      const { data, error } = await supabase
+        .from('trainers')
+        .select('*')
+        .eq('courtId', courtId)
+        .eq('passcode', passcode);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const doc = data[0];
         return {
-          id: doc.$id,
+          id: doc.id,
           name: doc.name,
           courtId: doc.courtId,
           passcode: doc.passcode,
-          $id: doc.$id
+          $id: doc.id
         };
       }
     } catch (e) {
